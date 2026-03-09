@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.34;
+
+/// @title  Types
+/// @author Shift Protocol
+/// @notice Shared enums, structs, and custom types for the syVault system.
+
+/*//////////////////////////////////////////////////////////////
+                            ENUMS
+//////////////////////////////////////////////////////////////*/
+
+/// @notice Lifecycle state of a vault instance.
+enum VaultState {
+    Pending,    // Not yet active — no operations allowed.
+    Active,     // Fully operational.
+    Deprecated, // No new deposits; redeems and cancels still open.
+    Closed      // Terminal — only cancels allowed.
+}
+
+/// @notice Type of a redeem cycle.
+enum CycleType {
+    Normal, // 7-day cycle.
+    Fast    // 1-day cycle.
+}
+
+/// @notice Progression state of a redeem cycle from the perspective of incoming requests.
+enum CycleState {
+    Pending,   // Accepting new requests.
+    Cutoff,    // Past cutoff — new requests go to next cycle.
+    Locked,    // Past lock window — no new requests, no cancellations.
+    Claimable  // Settled — assets claimable by controllers.
+}
+
+/*//////////////////////////////////////////////////////////////
+                           STRUCTS
+//////////////////////////////////////////////////////////////*/
+
+/// @notice Per-cycle accounting state.
+/// @dev    Stored keyed by cycleId. For normal redeems cycleId = currentNormalCycleId(),
+///         for fast redeems cycleId = currentFastCycleId() at request time.
+struct RedeemCycle {
+    CycleType cycleType;      // Normal or fast.
+    uint256   shares;         // Total shares locked into this cycle.
+    uint256   cutoffEpoch;    // Epoch at which new requests revert with CycleInCutoff.
+    uint256   lockEpoch;      // Epoch at which cancellations are disabled.
+    bool      settled;        // True after settleRedeemBatch() completes.
+    uint256   returnedAmount; // Assets returned by Allocator via returnCapital().
+    uint256   cycleRate;      // returnedAmount / shares, scaled by SHARE_PRICE_PRECISION.
+}
+
+/// @notice Snapshot of share price data stored per epoch in the ring buffer.
+/// @dev    Used by getSharePriceHistory() and getHWMHistory(). Max 720 epochs (30d).
+struct SharePriceSnapshot {
+    uint256 sharePrice;  // Share price at this epoch, scaled by SHARE_PRICE_PRECISION.
+    uint256 totalSupply; // syShare totalSupply at settlement.
+    uint256 timestamp;   // block.timestamp at epochSettle().
+}
