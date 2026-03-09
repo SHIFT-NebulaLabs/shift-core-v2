@@ -6,7 +6,6 @@ import {VaultState}       from "src/types/Types.sol";
 import {
     AddressRegistry__NotAuthorized,
     AddressRegistry__ZeroAddress,
-    AddressRegistry__VaultAlreadyRegistered,
     AddressRegistry__VaultNotFound
 } from "src/types/Errors.sol";
 
@@ -71,22 +70,21 @@ abstract contract AddressRegistry is IAddressRegistry {
 
     /// @inheritdoc IAddressRegistry
     function registerVault(
-        uint256 _vaultId,
         address _syVault,
         address _liquidityPool,
         address _syShare
-    ) external onlyAdminGateway {
-        if (s_registered[_vaultId]) revert AddressRegistry__VaultAlreadyRegistered();
+    ) external onlyAdminGateway returns (uint256 _vaultId) {
         if (_syVault == address(0) || _liquidityPool == address(0) || _syShare == address(0)) {
             revert AddressRegistry__ZeroAddress();
         }
+
+        _vaultId = ++s_vaultCount;
 
         s_registered[_vaultId]      = true;
         s_syVaults[_vaultId]        = _syVault;
         s_liquidityPools[_vaultId]  = _liquidityPool;
         s_syShares[_vaultId]        = _syShare;
         s_vaultStates[_vaultId]     = VaultState.Pending;
-        s_vaultCount++;
 
         emit VaultRegistered(_vaultId, _syVault, _liquidityPool, _syShare);
     }

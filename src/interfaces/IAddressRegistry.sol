@@ -43,16 +43,16 @@ interface IAddressRegistry {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Register a new vault cluster. Only callable by AdminGateway.
-    /// @param  vaultId        Vault identifier.
+    /// @dev    vaultId is auto-assigned as an incrementing counter starting at 1.
     /// @param  syVault        Address of the syVault contract.
     /// @param  liquidityPool  Address of the LiquidityPool contract.
     /// @param  syShare        Address of the syShare token contract.
+    /// @return vaultId        Auto-assigned vault identifier.
     function registerVault(
-        uint256 vaultId,
         address syVault,
         address liquidityPool,
         address syShare
-    ) external;
+    ) external returns (uint256 vaultId);
 
     /// @notice Update the lifecycle state of a vault. Only callable by AdminGateway.
     /// @param  vaultId   Vault identifier.

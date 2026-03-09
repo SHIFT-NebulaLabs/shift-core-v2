@@ -78,17 +78,17 @@ abstract contract AdminGateway is TimelockController {
 
     /// @notice Register a new vault cluster in the AddressRegistry.
     /// @dev    High-risk — must go through timelock. Only ADMIN can propose.
-    /// @param  _vaultId        Vault identifier. Must be unique.
+    ///         vaultId is auto-assigned by the registry and emitted in VaultRegistered.
     /// @param  _syVault        Address of the deployed syVault contract.
     /// @param  _liquidityPool  Address of the deployed LiquidityPool contract.
     /// @param  _syShare        Address of the deployed syShare token.
+    /// @return vaultId         Auto-assigned vault identifier.
     function registerVault(
-        uint256 _vaultId,
         address _syVault,
         address _liquidityPool,
         address _syShare
-    ) external onlyTimelock {
-        i_addressRegistry.registerVault(_vaultId, _syVault, _liquidityPool, _syShare);
+    ) external onlyTimelock returns (uint256 vaultId) {
+        return i_addressRegistry.registerVault(_syVault, _liquidityPool, _syShare);
     }
 
     /*//////////////////////////////////////////////////////////////

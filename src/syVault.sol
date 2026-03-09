@@ -83,6 +83,11 @@ abstract contract SyVault is ReentrancyGuard, ISyVault {
                            STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
 
+    // ── Version ────────────────────────────────────────────────
+
+    /// @notice Contract version, follows semantic versioning.
+    string public constant VERSION = "1.0.0";
+
     // ── Immutables ─────────────────────────────────────────────
 
     /// @notice Underlying asset (e.g. USDC).
