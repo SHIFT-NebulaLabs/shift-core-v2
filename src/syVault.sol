@@ -71,7 +71,7 @@ import {
 ///         Redeem flow:    requestRedeem  → [lock] → returnCapital → settleRedeemBatch → redeem/withdraw
 ///         Fast redeem:    requestFastRedeem → [lock] → returnCapital → settleRedeemBatch → redeem/withdraw
 ///
-///         Key invariants (from spec §1.5):
+///         Key invariants:
 ///         - Shares minted ONLY at deposit()/mint() claim — never at requestDeposit().
 ///         - Shares burned ONLY at settleRedeemBatch() — never before.
 ///         - returnCapital() MUST precede settleRedeemBatch(). Never invert.
@@ -520,7 +520,7 @@ abstract contract SyVault is ReentrancyGuard, ISyVault {
     }
 
     /// @inheritdoc ISyVault
-    function mint(uint256 _shares, address _receiver, address _controller) //TODO: since mint/deposit are the same fucntion, is better to recall an internal one.
+    function mint(uint256 _shares, address _receiver, address _controller)
         external
         onlyHub
         nonReentrant

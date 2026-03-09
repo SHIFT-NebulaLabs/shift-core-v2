@@ -87,7 +87,7 @@ abstract contract LiquidityPool is ReentrancyGuard, ILiquidityPool {
 
     /// @inheritdoc ILiquidityPool
     function returnCapital(uint256 _amount) external onlyAllocator nonReentrant {
-        // Transfer from Allocator into pool — must never revert if funds are already here.
+        // Transfer from Allocator into pool — must never revert if funds are already here. //TODO
         i_asset.safeTransferFrom(i_allocator, address(this), _amount);
 
         emit CapitalReturned(_amount, block.timestamp);

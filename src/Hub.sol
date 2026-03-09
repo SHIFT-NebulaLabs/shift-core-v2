@@ -39,37 +39,26 @@ abstract contract Hub is IHub {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IHub
-    function requestDeposit(uint256 _vaultId, uint256 _assets, address _controller, address _owner)
-        external
-        returns (uint256 requestId)
-    {
+    function requestDeposit(uint256 _vaultId, uint256 _assets, address _controller, address _owner) external returns (uint256 requestId) {
         _requireActive(_vaultId);
         _requireOwnerOrOperator(_vaultId, _controller, _owner);
         return ISyVault(_getSyVault(_vaultId)).requestDeposit(_assets, _controller, _owner);
     }
 
     /// @inheritdoc IHub
-    function cancelDepositRequest(uint256 _vaultId, uint256 _requestId, address _controller)
-        external
-    {
+    function cancelDepositRequest(uint256 _vaultId, uint256 _requestId, address _controller) external {
         // Cancel always available — no vault state check.
         ISyVault(_getSyVault(_vaultId)).cancelDepositRequest(_requestId, _controller);
     }
 
     /// @inheritdoc IHub
-    function deposit(uint256 _vaultId, uint256 _assets, address _receiver, address _controller)
-        external
-        returns (uint256 shares)
-    {
+    function deposit(uint256 _vaultId, uint256 _assets, address _receiver, address _controller) external returns (uint256 shares) {
         _requireActiveOrDeprecated(_vaultId);
         return ISyVault(_getSyVault(_vaultId)).deposit(_assets, _receiver, _controller);
     }
 
     /// @inheritdoc IHub
-    function mint(uint256 _vaultId, uint256 _shares, address _receiver, address _controller)
-        external
-        returns (uint256 assets)
-    {
+    function mint(uint256 _vaultId, uint256 _shares, address _receiver, address _controller) external returns (uint256 assets) {
         _requireActiveOrDeprecated(_vaultId);
         return ISyVault(_getSyVault(_vaultId)).mint(_shares, _receiver, _controller);
     }
@@ -79,34 +68,25 @@ abstract contract Hub is IHub {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IHub
-    function requestRedeem(uint256 _vaultId, uint256 _shares, address _controller, address _owner)
-        external returns (uint256 requestId) {
+    function requestRedeem(uint256 _vaultId, uint256 _shares, address _controller, address _owner) external returns (uint256 requestId) {
         _requireActiveOrDeprecated(_vaultId);
         _requireOwnerOrOperator(_vaultId, _controller, _owner);
         return ISyVault(_getSyVault(_vaultId)).requestRedeem(_shares, _controller, _owner);
     }
 
     /// @inheritdoc IHub
-    function cancelRedeemRequest(uint256 _vaultId, uint256 _requestId, address _controller)
-        external
-    {
+    function cancelRedeemRequest(uint256 _vaultId, uint256 _requestId, address _controller) external {
         ISyVault(_getSyVault(_vaultId)).cancelRedeemRequest(_requestId, _controller);
     }
 
     /// @inheritdoc IHub
-    function redeem(uint256 _vaultId, uint256 _shares, address _receiver, address _controller)
-        external
-        returns (uint256 assets)
-    {
+    function redeem(uint256 _vaultId, uint256 _shares, address _receiver, address _controller) external returns (uint256 assets) {
         _requireActiveOrDeprecated(_vaultId);
         return ISyVault(_getSyVault(_vaultId)).redeem(_shares, _receiver, _controller);
     }
 
     /// @inheritdoc IHub
-    function withdraw(uint256 _vaultId, uint256 _assets, address _receiver, address _controller)
-        external
-        returns (uint256 shares)
-    {
+    function withdraw(uint256 _vaultId, uint256 _assets, address _receiver, address _controller) external returns (uint256 shares) {
         _requireActiveOrDeprecated(_vaultId);
         return ISyVault(_getSyVault(_vaultId)).withdraw(_assets, _receiver, _controller);
     }
@@ -128,9 +108,7 @@ abstract contract Hub is IHub {
     }
 
     /// @inheritdoc IHub
-    function cancelFastRedeemRequest(uint256 _vaultId, uint256 _requestId, address _controller)
-        external
-    {
+    function cancelFastRedeemRequest(uint256 _vaultId, uint256 _requestId, address _controller) external {
         ISyVault(_getSyVault(_vaultId)).cancelFastRedeemRequest(_requestId, _controller);
     }
 
@@ -139,10 +117,7 @@ abstract contract Hub is IHub {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IHub
-    function setOperator(uint256 _vaultId, address _operator, bool _approved)
-        external
-        returns (bool)
-    {
+    function setOperator(uint256 _vaultId, address _operator, bool _approved) external returns (bool) {
         // Pass msg.sender as controller — Hub is always msg.sender on syVault.
         return ISyVault(_getSyVault(_vaultId)).setOperator(msg.sender, _operator, _approved);
     }
