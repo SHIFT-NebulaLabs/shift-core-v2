@@ -16,7 +16,7 @@ import {Hub__VaultNotActive, Hub__ZeroAddress, Hub__NotAuthorized} from "src/typ
 ///         All view functions bypass Hub and go directly to syVault.
 ///         The stable integration address — contract addresses below Hub can be upgraded
 ///         via AdminGateway without breaking user integrations.
-abstract contract Hub is IHub {
+contract Hub is IHub {
     /*//////////////////////////////////////////////////////////////
                            STATE VARIABLES
     //////////////////////////////////////////////////////////////*/

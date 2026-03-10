@@ -87,6 +87,9 @@ error SyVault__AsyncVault();
 /// @notice Thrown when a zero amount is passed where a positive value is required.
 error SyVault__ZeroAmount();
 
+/// @notice Thrown when a fee parameter exceeds the allowed maximum (BASIS_POINTS).
+error SyVault__InvalidParam();
+
 /*//////////////////////////////////////////////////////////////
                         LIQUIDITYPOOL
 //////////////////////////////////////////////////////////////*/
@@ -135,6 +138,9 @@ error AddressRegistry__VaultAlreadyRegistered();
 
 /// @notice Thrown when the requested vaultId does not exist.
 error AddressRegistry__VaultNotFound();
+
+/// @notice Thrown when a vault address does not implement the required EIP-7540 interfaces.
+error AddressRegistry__IncompatibleVault();
 
 /*//////////////////////////////////////////////////////////////
                         ADMINGATEWAY

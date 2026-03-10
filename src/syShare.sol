@@ -27,9 +27,10 @@ contract SyShare is ERC20, ERC20Burnable, ISyShare {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Restricts function to the paired syVault.
-    modifier onlyVault() {
+    modifier onlyVault() { _onlyVault(); _; }
+
+    function _onlyVault() internal view {
         if (msg.sender != i_vault) revert SyShare__NotVault();
-        _;
     }
 
     /*//////////////////////////////////////////////////////////////

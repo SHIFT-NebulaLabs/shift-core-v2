@@ -23,6 +23,23 @@ enum CycleType {
     Fast    // 1-day cycle.
 }
 
+/// @notice Result of a requestDeposit eligibility check.
+enum DepositRequestStatus {
+    Ok,             // Request can proceed.
+    Paused,         // Vault is fully paused or deposits are paused.
+    NotWhitelisted, // Deposit whitelist is enabled and caller is not on it.
+    TVLExceeded,    // Deposit would push TVL above maxTVL.
+    StalePrice      // Keeper is too far behind — share price is stale.
+}
+
+/// @notice Result of a requestRedeem eligibility check.
+enum RedeemRequestStatus {
+    Ok,             // Request can proceed.
+    Paused,         // Vault is fully paused or redeems are paused.
+    AlreadyPending, // Owner already has an active redeem request.
+    PastCutoff      // Current normal cycle is past the cutoff epoch.
+}
+
 /// @notice Progression state of a redeem cycle from the perspective of incoming requests.
 enum CycleState {
     Pending,   // Accepting new requests.

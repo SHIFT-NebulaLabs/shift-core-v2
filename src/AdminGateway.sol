@@ -21,7 +21,7 @@ import {AdminGateway__ZeroAddress, AdminGateway__InvalidTransition, AdminGateway
 ///           Pending  → Active      (ADMIN + timelock)
 ///           Active   → Deprecated  (ADMIN + timelock)
 ///           Deprecated → Closed    (ADMIN + timelock)
-abstract contract AdminGateway is TimelockController {
+contract AdminGateway is TimelockController {
     /*//////////////////////////////////////////////////////////////
                            STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -43,21 +43,24 @@ abstract contract AdminGateway is TimelockController {
 
     /// @dev High-risk actions MUST be called via TimelockController self-execution.
     ///      When the timelock executes a scheduled operation on itself, msg.sender == address(this).
-    modifier onlyTimelock() {
+    modifier onlyTimelock() { _onlyTimelock(); _; }
+
+    function _onlyTimelock() internal view {
         if (msg.sender != address(this)) revert AdminGateway__NotAuthorized();
-        _;
     }
 
     /// @dev Low-risk parameter changes — ADMIN role, no timelock.
-    modifier onlyAdmin() {
+    modifier onlyAdmin() { _onlyAdmin(); _; }
+
+    function _onlyAdmin() internal view {
         if (!hasRole(ADMIN_ROLE, msg.sender)) revert AdminGateway__NotAuthorized();
-        _;
     }
 
     /// @dev Emergency pause — GUARDIAN role, no timelock. Immediate.
-    modifier onlyGuardian() {
+    modifier onlyGuardian() { _onlyGuardian(); _; }
+
+    function _onlyGuardian() internal view {
         if (!hasRole(GUARDIAN_ROLE, msg.sender)) revert AdminGateway__NotAuthorized();
-        _;
     }
 
     /// @param _addressRegistry  Address of the singleton AddressRegistry.
@@ -79,16 +82,26 @@ abstract contract AdminGateway is TimelockController {
     /// @notice Register a new vault cluster in the AddressRegistry.
     /// @dev    High-risk — must go through timelock. Only ADMIN can propose.
     ///         vaultId is auto-assigned by the registry and emitted in VaultRegistered.
+    ///         _syVault is validated against required EIP-7540 interfaces via EIP-165.
     /// @param  _syVault        Address of the deployed syVault contract.
     /// @param  _liquidityPool  Address of the deployed LiquidityPool contract.
     /// @param  _syShare        Address of the deployed syShare token.
+    /// @param  _syOFT          Address of the syOFTAdapter (address(0) for single-chain vaults).
     /// @return vaultId         Auto-assigned vault identifier.
     function registerVault(
         address _syVault,
         address _liquidityPool,
-        address _syShare
+        address _syShare,
+        address _syOFT
     ) external onlyTimelock returns (uint256 vaultId) {
-        return i_addressRegistry.registerVault(_syVault, _liquidityPool, _syShare);
+        return i_addressRegistry.registerVault(_syVault, _liquidityPool, _syShare, _syOFT);
+    }
+
+    /// @notice Set or update the OFT adapter for an existing vault. High-risk — must go through timelock.
+    /// @param  _vaultId  Vault identifier.
+    /// @param  _syOFT    New OFT adapter address (address(0) to clear).
+    function setVaultOft(uint256 _vaultId, address _syOFT) external onlyTimelock {
+        i_addressRegistry.setVaultOft(_vaultId, _syOFT);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -171,8 +184,8 @@ abstract contract AdminGateway is TimelockController {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Set maxTVL cap for a vault. onlyAdmin.
-    function setMaxTVL(uint256 _vaultId, uint256 _maxTVL) external onlyAdmin {
-        ISyVault(_getSyVault(_vaultId)).setMaxTVL(_maxTVL);
+    function setMaxTvl(uint256 _vaultId, uint256 _maxTVL) external onlyAdmin {
+        ISyVault(_getSyVault(_vaultId)).setMaxTvl(_maxTVL);
     }
 
     /// @notice Set max share price move per epoch (basis points). onlyAdmin.

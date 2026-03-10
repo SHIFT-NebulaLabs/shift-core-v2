@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {VaultState, CycleState, RedeemCycle, SharePriceSnapshot} from "src/types/Types.sol";
+import {CycleState, RedeemCycle, SharePriceSnapshot, DepositRequestStatus, RedeemRequestStatus} from "src/types/Types.sol";
 
 /// @title  ISyVault
 /// @author Shift Protocol
@@ -349,6 +349,16 @@ interface ISyVault {
     /// @dev    Returns claimable shares for this owner.
     function maxRedeem(address owner) external view returns (uint256);
 
+    /// @notice Single-call eligibility check for requestDeposit — use in FE to surface a reason.
+    /// @param  controller  Address that will own the request.
+    /// @return status      Ok if request can proceed; otherwise the blocking reason.
+    function requestDepositStatus(address controller) external view returns (DepositRequestStatus status);
+
+    /// @notice Single-call eligibility check for requestRedeem — use in FE to surface a reason.
+    /// @param  owner   Address that will lock shares.
+    /// @return status  Ok if request can proceed; otherwise the blocking reason.
+    function requestRedeemStatus(address owner) external view returns (RedeemRequestStatus status);
+
     /// @notice MUST revert — async vault, no synchronous preview. EIP-7540 compliance.
     function previewDeposit(uint256 assets) external view returns (uint256);
 
@@ -452,12 +462,12 @@ interface ISyVault {
         returns (SharePriceSnapshot[] memory);
 
     /// @notice Current High Water Mark, scaled by SHARE_PRICE_PRECISION.
-    function latestHWM() external view returns (uint256);
+    function latestHwm() external view returns (uint256);
 
     /// @notice HWM values over an epoch range. Same 720-epoch ring buffer.
     /// @param  fromEpoch  Start epoch (inclusive).
     /// @param  toEpoch    End epoch (inclusive).
-    function getHWMHistory(uint256 fromEpoch, uint256 toEpoch)
+    function getHwmHistory(uint256 fromEpoch, uint256 toEpoch)
         external
         view
         returns (uint256[] memory);
@@ -479,11 +489,15 @@ interface ISyVault {
     /// @notice True if the Allocator is currently operating. Keeper uses previous price when true.
     function allocatorActive() external view returns (bool);
 
-    /// @notice Timestamp of the last deployCapital() or returnCapital() call.
-    function lastAllocatorAction() external view returns (uint256);
-
     /// @notice Total assets reserved for locked redeem cycles not yet settled.
     function redeemDue() external view returns (uint256);
+
+    /// @notice Total shares locked in unsettled redeem cycles.
+    function pendingRedeemShares() external view returns (uint256);
+
+    /// @notice Shares in active circulation, excluding locked redeem shares.
+    /// @dev    Keeper denominator for sharePrice = TVL / effectiveSupply().
+    function effectiveSupply() external view returns (uint256);
 
     /// @notice Investable liquidity: LiquidityPool.balance − redeemDue − claimableRedeemAssets.
     function investableLiquidity() external view returns (uint256);
@@ -502,7 +516,7 @@ interface ISyVault {
     function allocator()               external view returns (address);
     function feeRecipient()            external view returns (address);
     function adminGateway()            external view returns (address);
-    function maxTVL()                  external view returns (uint256);
+    function maxTvl()                  external view returns (uint256);
     function maxSharePriceDelta()      external view returns (uint256);
     function maxStalePriceEpochs()     external view returns (uint256);
     function maintenanceFeeInterval()  external view returns (uint256);
@@ -560,7 +574,7 @@ interface ISyVault {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Set the maximum TVL cap (raw asset units). 0 = no cap. onlyAdminGateway.
-    function setMaxTVL(uint256 maxTVL) external;
+    function setMaxTvl(uint256 maxTVL) external;
     /// @notice Set max allowed share price move per epoch in basis points. onlyAdminGateway.
     function setMaxSharePriceDelta(uint256 delta) external;
     /// @notice Set max epochs the keeper can be behind before deposits are blocked. onlyAdminGateway.

@@ -49,8 +49,9 @@ interface ILiquidityPool {
                               VIEW
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Maximum assets the Allocator can deploy in the current epoch.
-    /// @dev    = balance() − redeemDue (read from paired syVault).
+    /// @notice Maximum assets the Allocator can deploy right now.
+    /// @dev    = balance() − redeemDue − claimableRedeemAssets − pendingDepositAssets.
+    ///         pendingDepositAssets are reserved because users can still cancel pending requests.
     function allocatorAllowance() external view returns (uint256);
 
     /// @notice Current asset balance held in this pool.

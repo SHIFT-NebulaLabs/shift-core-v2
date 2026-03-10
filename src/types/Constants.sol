@@ -43,34 +43,21 @@ uint256 constant MAX_HISTORY_RANGE = 720;
 // Basis points denominator (10 000 = 100%).
 uint256 constant BASIS_POINTS = 10_000;
 
+// Epochs per year — used for annualised maintenance fee proration (1 epoch = 1 hour).
+uint256 constant EPOCHS_PER_YEAR = 8_760;
+
 // Share price fixed-point precision (1e18 = WAD).
 uint256 constant SHARE_PRICE_PRECISION = 1e18;
 
 /*//////////////////////////////////////////////////////////////
-                          LAYERZERO
+                     ADDRESS REGISTRY KEYS
 //////////////////////////////////////////////////////////////*/
 
-// LayerZero V2 EndpointV2 address — all chains except zkSync Era.
-address constant LZ_ENDPOINT_V2 = 0x1a44076050125825900e736c501f859c50fE728c;
+// bytes32 key for the Hub singleton in AddressRegistry.
+bytes32 constant CONTRACT_HUB = keccak256("Hub");
 
-// LayerZero V2 EndpointV2 address — zkSync Era only.
-address constant LZ_ENDPOINT_V2_ZKSYNC = 0xd07C30aF3Ff30D96BDc9c6044958230Eb797DDBF;
-
-/*//////////////////////////////////////////////////////////////
-                        EIP-165 INTERFACE IDS
-//////////////////////////////////////////////////////////////*/
-
-// EIP-165 interface ID for ERC-7540 async deposit.
-bytes4 constant INTERFACE_ID_ERC7540_DEPOSIT = 0xe3bc4e65;
-
-// EIP-165 interface ID for ERC-7540 async redeem.
-bytes4 constant INTERFACE_ID_ERC7540_REDEEM = 0x2f0a18c5;
-
-// EIP-165 interface ID for ERC-7540 operator management.
-bytes4 constant INTERFACE_ID_ERC7540_OPERATOR = 0xce3bbe50;
-
-// EIP-165 interface ID for ERC-7575 share discovery.
-bytes4 constant INTERFACE_ID_ERC7575 = 0x620ee8e4;
+// bytes32 key for the AdminGateway singleton in AddressRegistry.
+bytes32 constant CONTRACT_ADMIN_GATEWAY = keccak256("AdminGateway");
 
 /*//////////////////////////////////////////////////////////////
                             ROLES
