@@ -39,8 +39,8 @@ error SyVault__NotWhitelisted();
 /// @notice Thrown when vault state does not permit the requested operation.
 error SyVault__InvalidVaultState();
 
-/// @notice Thrown when requestRedeem() is called after the cycle cutoff epoch.
-error SyVault__CycleInCutoff();
+/// @notice Thrown when requestFastRedeem() is called after cutoff but the current fast cycle is not yet settled.
+error SyVault__FastCycleNotSettled();
 
 /// @notice Thrown when settleRedeemBatch() is called before the cycle lock epoch.
 error SyVault__CycleNotLocked();

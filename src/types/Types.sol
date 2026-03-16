@@ -34,10 +34,11 @@ enum DepositRequestStatus {
 
 /// @notice Result of a requestRedeem eligibility check.
 enum RedeemRequestStatus {
-    Ok,             // Request can proceed.
-    Paused,         // Vault is fully paused or redeems are paused.
-    AlreadyPending, // Owner already has an active redeem request.
-    PastCutoff      // Current normal cycle is past the cutoff epoch.
+    Ok,                      // Request can proceed.
+    Paused,                  // Vault is fully paused or redeems are paused.
+    AlreadyPending,          // Owner already has an active redeem request.
+    PastCutoff,              // Current normal cycle is past cutoff — request will go to next cycle.
+    FastCycleSettlementPending // Current fast cycle is past cutoff but not yet settled — wait for Allocator.
 }
 
 /// @notice Progression state of a redeem cycle from the perspective of incoming requests.
@@ -58,7 +59,7 @@ enum CycleState {
 struct RedeemCycle {
     CycleType cycleType;      // Normal or fast.
     uint256   shares;         // Total shares locked into this cycle.
-    uint256   cutoffEpoch;    // Epoch at which new requests revert with CycleInCutoff.
+    uint256   cutoffEpoch;    // Epoch at which new requests go to the next cycle.
     uint256   lockEpoch;      // Epoch at which cancellations are disabled.
     bool      settled;        // True after settleRedeemBatch() completes.
     uint256   returnedAmount; // Assets returned by Allocator via returnCapital().

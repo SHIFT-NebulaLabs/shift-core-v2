@@ -507,6 +507,10 @@ contract SyVault is SyVaultRedeem {
         if (s_activeRedeemCycleId[_owner] != 0) return RedeemRequestStatus.AlreadyPending;
         if (s_currentNormalCycleId != 0 && currentEpoch() >= s_redeemCycles[s_currentNormalCycleId].cutoffEpoch)
             return RedeemRequestStatus.PastCutoff;
+        if (s_currentFastCycleId != 0
+            && currentEpoch() >= s_redeemCycles[s_currentFastCycleId].cutoffEpoch
+            && !s_redeemCycles[s_currentFastCycleId].settled)
+            return RedeemRequestStatus.FastCycleSettlementPending;
         return RedeemRequestStatus.Ok;
     }
 
@@ -528,6 +532,15 @@ contract SyVault is SyVaultRedeem {
     /// @inheritdoc ISyVault
     function previewWithdraw(uint256) external pure returns (uint256) {
         revert SyVault__AsyncVault();
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                   EXTERNAL VIEW — EIP-4626 ASSET
+    //////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc ISyVault
+    function asset() external view returns (address) {
+        return address(i_asset);
     }
 
     /*//////////////////////////////////////////////////////////////

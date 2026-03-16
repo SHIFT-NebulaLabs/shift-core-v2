@@ -174,7 +174,8 @@ abstract contract SyVaultBase is ReentrancyGuard, ISyVault {
         i_liquidityPool   = _liquidityPool;
         i_hub             = _hub;
         i_adminGateway    = _adminGateway;
-        i_deployTimestamp = block.timestamp;
+        // Floor to the nearest epoch boundary so keeper running at :00 every hour stays in sync.
+        i_deployTimestamp = block.timestamp - (block.timestamp % EPOCH_DURATION);
 
         s_keeper          = _keeper;
         s_allocator       = _allocator;

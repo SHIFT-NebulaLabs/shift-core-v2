@@ -7,6 +7,7 @@ import {
     SyVault__ZeroAmount,
     SyVault__NoPendingRequest,
     SyVault__RedeemRequestAlreadyPending,
+    SyVault__FastCycleNotSettled,
     SyVault__CycleNotLocked,
     SyVault__CycleAlreadySettled,
     SyVault__NoClaimableRedeem
@@ -303,6 +304,10 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     function _openOrReuseCycle(bool _isFast) internal returns (uint256 cycleId) {
         if (_isFast) {
             if (s_currentFastCycleId == 0 || currentEpoch() >= s_redeemCycles[s_currentFastCycleId].cutoffEpoch) {
+                // Only one unsettled fast cycle at a time — Allocator handles one per day.
+                if (s_currentFastCycleId != 0 && !s_redeemCycles[s_currentFastCycleId].settled) {
+                    revert SyVault__FastCycleNotSettled();
+                }
                 s_currentFastCycleId = s_cycleIdCounter++;
                 uint256 epoch = currentEpoch();
                 s_redeemCycles[s_currentFastCycleId] = RedeemCycle({

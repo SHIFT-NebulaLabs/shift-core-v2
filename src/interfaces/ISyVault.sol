@@ -171,7 +171,7 @@ interface ISyVault {
 
     /// @notice Submit a normal redeem request. Shares locked immediately.
     /// @dev    Pending state. Added to current 7-day cycle. requestId = currentNormalCycleId().
-    ///         Reverts with SyVault__CycleInCutoff if past epoch 120 of the current cycle.
+    ///         If the current cycle is past its cutoff epoch, the request automatically goes to the next cycle.
     ///         Only callable via Hub.
     /// @param  shares      Shares to redeem.
     /// @param  controller  Address that will own the request and can claim assets.
@@ -327,6 +327,10 @@ interface ISyVault {
                      EIP-4626 PARTIAL — VIEW
     //////////////////////////////////////////////////////////////*/
 
+    /// @notice Address of the underlying ERC-20 asset (e.g. USDC).
+    /// @dev    EIP-4626. Frontend must call asset() to know which token to approve before requestDeposit().
+    function asset() external view returns (address);
+
     /// @notice Total assets managed by the vault — estimate for display only.
     /// @dev    = sharePrice × totalSupply. Stale by at most 1 epoch. Includes unrealized P&L.
     /// @return Total asset estimate.
@@ -391,7 +395,8 @@ interface ISyVault {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Settle pending deposits and update share price. Called every epoch by Keeper.
-    /// @dev    onlyKeeper. Pass sharePrice = 0 as ADMIN/GUARDIAN emergency fallback (uses previous price).
+    /// @dev    Callable by Keeper (any price) or AdminGateway (sharePrice = 0 only, emergency path).
+    ///         Pass sharePrice = 0 to use previous price — valid for both Keeper and AdminGateway.
     ///         Skips price update if allocatorActive = true (uses previous price).
     ///         After ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS consecutive skips, proceeds with proposed price.
     ///         Collects performance fee (mints shares if sharePrice > HWM).

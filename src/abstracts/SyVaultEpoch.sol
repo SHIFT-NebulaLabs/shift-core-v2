@@ -4,6 +4,7 @@ pragma solidity 0.8.34;
 import {SyVaultBase} from "src/abstracts/SyVaultBase.sol";
 import {SharePriceSnapshot} from "src/types/Types.sol";
 import {
+    SyVault__NotKeeper,
     SyVault__EpochNotElapsed,
     SyVault__SharePriceDeltaExceeded,
     SyVault__RangeTooLarge,
@@ -52,14 +53,18 @@ abstract contract SyVaultEpoch is SyVaultBase {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Settle pending deposits and update share price. Called every epoch by Keeper.
-    /// @dev    onlyKeeper. Pass sharePrice = 0 as ADMIN/GUARDIAN emergency fallback (uses previous price).
+    /// @dev    Keeper can call with any price. AdminGateway can call with 0 only (GUARDIAN/ADMIN emergency).
     ///         Skips price update if allocatorActive = true (uses previous price).
     ///         After ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS consecutive skips, proceeds with proposed price.
     ///         Collects performance fee (mints shares if sharePrice > HWM).
     ///         Collects maintenance fee every feeCollectionInterval epochs (deducts from TVL).
     ///         Emits SharePriceUpdated, PerformanceFeeCollected, and conditionally MaintenanceFeeCollected.
     /// @param  _sharePrice Proposed share price, scaled by SHARE_PRICE_PRECISION. 0 = use previous.
-    function epochSettle(uint256 _sharePrice) external onlyKeeper {
+    function epochSettle(uint256 _sharePrice) external {
+        // Keeper can call with any price. AdminGateway (GUARDIAN/ADMIN route) can call with 0 only.
+        if (msg.sender != s_keeper) {
+            if (msg.sender != i_adminGateway || _sharePrice != 0) revert SyVault__NotKeeper();
+        }
         uint256 epochToSettle = s_nextEpochToSettle;
         if (epochToSettle >= currentEpoch()) revert SyVault__EpochNotElapsed();
 

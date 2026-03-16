@@ -142,6 +142,20 @@ contract AdminGateway is TimelockController {
     }
 
     /*//////////////////////////////////////////////////////////////
+             EMERGENCY EPOCH SETTLE — GUARDIAN or ADMIN (immediate)
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Settle the current epoch using the previous share price. Emergency fallback.
+    /// @dev    Callable by GUARDIAN or ADMIN — no timelock. Passes sharePrice = 0 to SyVault,
+    ///         which uses the previous price. Use when the Keeper is down and deposits must be settled.
+    function emergencyEpochSettle(uint256 _vaultId) external {
+        if (!hasRole(GUARDIAN_ROLE, msg.sender) && !hasRole(ADMIN_ROLE, msg.sender)) {
+            revert AdminGateway__NotAuthorized();
+        }
+        ISyVault(_getSyVault(_vaultId)).epochSettle(0);
+    }
+
+    /*//////////////////////////////////////////////////////////////
                     UNPAUSE — ADMIN (immediate)
     //////////////////////////////////////////////////////////////*/
 
