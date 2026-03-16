@@ -7,10 +7,9 @@ import {SyVault} from "src/SyVault.sol";
 import {SyShare} from "src/SyShare.sol";
 import {LiquidityPool} from "src/LiquidityPool.sol";
 import {Hub} from "src/Hub.sol";
-import {AddressRegistry} from "src/AddressRegistry.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {RedeemCycle} from "src/types/Types.sol";
-import {EPOCH_DURATION, SHARE_PRICE_PRECISION} from "src/types/Constants.sol";
+import {EPOCH_DURATION} from "src/types/Constants.sol";
 
 /// @dev Handler that is called randomly by the Foundry invariant fuzzer.
 ///      Receives all contract references from SyVaultInvariantTest.

@@ -4,8 +4,7 @@ pragma solidity 0.8.34;
 import {Base} from "test/Base.t.sol";
 import {
     LiquidityPool__NotAuthorized,
-    LiquidityPool__ExceedsAllowance,
-    LiquidityPool__InsufficientBalance
+    LiquidityPool__ExceedsAllowance
 } from "src/types/Errors.sol";
 
 contract LiquidityPoolTest is Base {

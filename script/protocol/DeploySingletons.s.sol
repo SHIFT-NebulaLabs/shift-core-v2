@@ -6,7 +6,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {AddressRegistry} from "src/AddressRegistry.sol";
 import {AdminGateway}    from "src/AdminGateway.sol";
 import {Hub}             from "src/Hub.sol";
-import {ADMIN_ROLE, GUARDIAN_ROLE} from "src/types/Constants.sol";
+import {GUARDIAN_ROLE} from "src/types/Constants.sol";
 
 /// @title  DeploySingletons
 /// @notice Deploys the three protocol singletons:

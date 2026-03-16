@@ -7,11 +7,9 @@ import {
     SyVault__ZeroAmount,
     SyVault__RedeemRequestAlreadyPending,
     SyVault__FastCycleNotSettled,
-    SyVault__NoPendingRequest,
-    SyVault__CycleNotLocked,
-    SyVault__NoClaimableRedeem
+    SyVault__CycleNotLocked
 } from "src/types/Errors.sol";
-import {FAST_REDEEM_CUTOFF, FAST_REDEEM_LOCK_WINDOW, BASIS_POINTS, SHARE_PRICE_PRECISION} from "src/types/Constants.sol";
+import {FAST_REDEEM_CUTOFF, FAST_REDEEM_LOCK_WINDOW, BASIS_POINTS} from "src/types/Constants.sol";
 
 contract SyVaultFastRedeemTest is Base {
 

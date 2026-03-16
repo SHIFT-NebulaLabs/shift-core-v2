@@ -7,7 +7,7 @@ import {
     SyVault__EpochNotElapsed,
     SyVault__SharePriceDeltaExceeded
 } from "src/types/Errors.sol";
-import {SHARE_PRICE_PRECISION, BASIS_POINTS, ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS} from "src/types/Constants.sol";
+import {BASIS_POINTS} from "src/types/Constants.sol";
 
 contract SyVaultEpochSettleTest is Base {
 

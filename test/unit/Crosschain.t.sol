@@ -157,8 +157,9 @@ contract CrosschainTest is Test {
     }
 
     /// @dev Snap `_raw` down to the nearest multiple of 1e12 (OFT shared-decimal dust removal).
+    ///      Division before multiplication is intentional — truncation IS the point.
     function _dustFree(uint256 _raw) internal pure returns (uint256) {
-        return (_raw / 1e12) * 1e12;
+        return (_raw / 1e12) * 1e12; // solhint-disable-line divide-before-multiply
     }
 
     /*//////////////////////////////////////////////////////////////

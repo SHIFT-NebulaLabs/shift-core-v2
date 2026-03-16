@@ -2,7 +2,7 @@
 pragma solidity 0.8.34;
 
 import {Base} from "test/Base.t.sol";
-import {SHARE_PRICE_PRECISION, NORMAL_REDEEM_LOCK_WINDOW, FAST_REDEEM_LOCK_WINDOW} from "src/types/Constants.sol";
+import {NORMAL_REDEEM_LOCK_WINDOW, FAST_REDEEM_LOCK_WINDOW} from "src/types/Constants.sol";
 
 /// @notice Allocator end-to-end behaviour tests.
 ///         Covers: deploy flow, return + settle flow, both cycles in one job,

@@ -11,7 +11,6 @@ import {VaultState} from "src/types/Types.sol";
 import {ADMIN_ROLE, GUARDIAN_ROLE} from "src/types/Constants.sol";
 import {
     AdminGateway__NotAuthorized,
-    AdminGateway__InvalidTransition,
     AdminGateway__ZeroAddress
 } from "src/types/Errors.sol";
 

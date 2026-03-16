@@ -2,7 +2,7 @@
 pragma solidity 0.8.34;
 
 import {Base} from "test/Base.t.sol";
-import {CycleState, CycleType, RedeemCycle} from "src/types/Types.sol";
+import {CycleState, RedeemCycle} from "src/types/Types.sol";
 import {
     SyVault__ZeroAmount,
     SyVault__RedeemRequestAlreadyPending,
@@ -13,11 +13,7 @@ import {
     SyVault__RedeemsPaused,
     SyVault__NotHub
 } from "src/types/Errors.sol";
-import {
-    NORMAL_REDEEM_CUTOFF,
-    NORMAL_REDEEM_LOCK_WINDOW,
-    SHARE_PRICE_PRECISION
-} from "src/types/Constants.sol";
+import {NORMAL_REDEEM_CUTOFF, SHARE_PRICE_PRECISION} from "src/types/Constants.sol";
 
 contract SyVaultRedeemTest is Base {
 

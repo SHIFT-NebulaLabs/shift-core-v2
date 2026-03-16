@@ -12,7 +12,6 @@ import {Hub}             from "src/Hub.sol";
 import {VaultState}      from "src/types/Types.sol";
 import {
     EPOCH_DURATION,
-    SHARE_PRICE_PRECISION,
     NORMAL_REDEEM_LOCK_WINDOW,
     FAST_REDEEM_LOCK_WINDOW
 } from "src/types/Constants.sol";
