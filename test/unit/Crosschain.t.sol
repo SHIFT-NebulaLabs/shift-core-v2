@@ -20,15 +20,11 @@ import {SySharePeer}  from "src/crosschain/SySharePeer.sol";
                         TEST HARNESS
 //////////////////////////////////////////////////////////////*/
 
-/// @dev Exposes internal _setRateLimits for testing the rate-limiting behaviour.
+/// @dev Thin wrapper — keeps a named type so tests read clearly.
 contract SyOFTAdapterHarness is SyOFTAdapter {
     constructor(address _syShare, address _lzEndpoint, address _owner)
         SyOFTAdapter(_syShare, _lzEndpoint, _owner)
     {}
-
-    function setRateLimits(RateLimiter.RateLimitConfig[] calldata _configs) external onlyOwner {
-        _setRateLimits(_configs);
-    }
 }
 
 /*//////////////////////////////////////////////////////////////
