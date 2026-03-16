@@ -1,46 +1,20 @@
 # LayerZero OFT — Solidity
 
-> Load when implementing or integrating OFT (Omnichain Fungible Token) in Solidity.
+> Load when implementing or integrating OFT in Solidity.
 > Read alongside `.claude/dev/solidity.md` and `.claude/components/erc-standards-solidity.md`.
-> Reference: https://docs.layerzero.network/v2/developers/evm/oft/quickstart
+> For deployment steps, DVN addresses, and SDK details: query the MCP server (see CLAUDE.md).
 
 ---
 
-## Concepts
-
-**OFT** — Omnichain Fungible Token. Burns tokens on source chain, mints on destination.
-**OFTAdapter** — Wraps an existing ERC-20 that cannot mint/burn. Locks on source, unlocks on destination.
-**MintBurnOFTAdapter** — Like OFTAdapter but delegates mint/burn to a permissioned contract instead of locking.
+## Variants — Choose One
 
 | Variant | Use case | Mechanism |
 |---|---|---|
 | `OFT` | New token — you control supply | burn → mint |
 | `OFTAdapter` | Existing token, no mint/burn access | lock → unlock |
-| `MintBurnOFTAdapter` | Existing token with mint/burn permissions | burn → mint via minter contract |
+| `MintBurnOFTAdapter` | Existing token with mint/burn permissions | burn → mint via adapter |
 
----
-
-## Installation (Foundry)
-
-```bash
-forge install layerzero-labs/devtools
-forge install layerzero-labs/LayerZero-v2
-forge install OpenZeppelin/openzeppelin-contracts
-git submodule add https://github.com/GNSPS/solidity-bytes-utils.git lib/solidity-bytes-utils
-```
-
-Add to `foundry.toml` under `[profile.default]`:
-
-```toml
-remappings = [
-    '@layerzerolabs/oft-evm/=lib/devtools/packages/oft-evm/',
-    '@layerzerolabs/oapp-evm/=lib/devtools/packages/oapp-evm/',
-    '@layerzerolabs/lz-evm-protocol-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/protocol',
-    '@layerzerolabs/lz-evm-messagelib-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/messagelib',
-    '@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/',
-    'solidity-bytes-utils/=lib/solidity-bytes-utils/',
-]
-```
+**⚠️ Only one lockbox OFTAdapter per token globally.** Multiple adapters create separate liquidity pools — tokens sent to a chain without enough supply on the destination are permanently lost.
 
 ---
 
@@ -49,9 +23,6 @@ remappings = [
 ### OFT — New Token
 
 ```solidity
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.22;
-
 import {OFT} from "@layerzerolabs/oft-evm/contracts/OFT.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -66,9 +37,7 @@ contract MyOFT is OFT {
 }
 ```
 
-Add `_mint` in constructor or expose a protected `mint` function before deploying.
-
-### OFTAdapter — Existing Token (Lock/Unlock)
+### OFTAdapter — Existing Token
 
 ```solidity
 import {OFTAdapter} from "@layerzerolabs/oft-evm/contracts/OFTAdapter.sol";
@@ -84,29 +53,32 @@ contract MyOFTAdapter is OFTAdapter {
 }
 ```
 
-**⚠️ Only one OFTAdapter per token globally.** Multiple adapters break unified liquidity and can cause permanent token loss.
+---
+
+## Configuration Order — Never Deviate
+
+Always configure in this exact sequence. Skipping or reordering breaks the pathway.
+
+```
+1. Deploy OFT on each chain
+2. Set send/receive libraries (explicit — never rely on defaults)
+3. Configure DVNs — both send and receive side per pathway
+4. Configure executor
+5. Set enforced options
+6. Set delegate (before transferring ownership)
+7. Set peers — LAST — this opens the messaging channel
+```
+
+**Pathways are directional.** A→B and B→A must each be configured and verified separately.
+
+**Never rely on default libraries or DVN config.** Defaults may be dead configs — DVNs not listening, executor not connected. Always call `getSendLibrary`, `getReceiveLibrary`, and `getConfig` to verify explicitly.
 
 ---
 
-## Key Concepts
+## Enforced Options
 
-### Endpoint V2
-All chains share the same EndpointV2 address:
-```
-0x1a44076050125825900e736c501f859c50fE728c
-```
-Exception: zkSync Era uses `0xd07C30aF3Ff30D96BDc9c6044958230Eb797DDBF`.
+Mandatory gas settings per message type. Without these, `send()` reverts.
 
-### Peers
-Each OFT must register trusted remote OFTs via `setPeer`:
-```solidity
-// _peer must be bytes32 — left-pad EVM addresses
-oft.setPeer(dstEid, bytes32(uint256(uint160(remotOFTAddress))));
-```
-**Set peers last** — after all security configuration. Setting a peer opens the messaging channel.
-
-### Enforced Options
-Mandatory gas settings applied to all messages of a given type:
 ```solidity
 EnforcedOptionParam[] memory options = new EnforcedOptionParam[](1);
 options[0] = EnforcedOptionParam({
@@ -116,105 +88,48 @@ options[0] = EnforcedOptionParam({
 });
 oft.setEnforcedOptions(options);
 ```
-If not set, `send()` reverts with `LZ_ULN_InvalidWorkerOptions`.
 
----
-
-## Deployment Flow
-
-### 1. Deploy on each chain
-```solidity
-// DeployMyOFT.s.sol
-contract DeployMyOFT is Script {
-    function run() external {
-        address endpoint = vm.envAddress("ENDPOINT_ADDRESS");
-        address owner = vm.envAddress("OWNER_ADDRESS");
-
-        vm.startBroadcast();
-        MyOFT oft = new MyOFT("MyToken", "MTK", endpoint, owner);
-        vm.stopBroadcast();
-
-        console.log("OFT deployed:", address(oft));
-    }
-}
-```
-
-### 2. Set send/receive libraries (if non-default)
-```solidity
-ILayerZeroEndpointV2(endpoint).setSendLibrary(oft, dstEid, sendLibAddress);
-ILayerZeroEndpointV2(endpoint).setReceiveLibrary(oft, srcEid, receiveLibAddress, 0);
-```
-
-### 3. Configure DVNs
-```solidity
-// Send config — set on source chain
-UlnConfig memory uln = UlnConfig({
-    confirmations: 15,
-    requiredDVNCount: 1,
-    optionalDVNCount: 0,
-    optionalDVNThreshold: 0,
-    requiredDVNs: [LAYERZERO_DVN_ADDRESS],
-    optionalDVNs: new address[](0)
-});
-SetConfigParam[] memory params = new SetConfigParam[](1);
-params[0] = SetConfigParam(dstEid, ULN_CONFIG_TYPE, abi.encode(uln));
-ILayerZeroEndpointV2(endpoint).setConfig(oft, sendLib, params);
-```
-
-### 4. Set enforced options
-See `setEnforcedOptions` above. Always set before peers.
-
-### 5. Set peers (last)
-```solidity
-oft.setPeer(dstEid, bytes32(uint256(uint160(remoteOFTAddress))));
-```
+Profile actual gas usage on destination before setting limits — do not guess.
 
 ---
 
 ## Sending Tokens
 
 ```solidity
-// 1. Quote fee
+// 1. Quote fee — call as close to send as possible
 SendParam memory sendParam = SendParam({
     dstEid: dstEid,
     to: bytes32(uint256(uint160(recipient))),
     amountLD: amount,
-    minAmountLD: amount * 95 / 100, // 5% slippage tolerance
+    minAmountLD: amount * 95 / 100,
     extraOptions: OptionsBuilder.newOptions().addExecutorLzReceiveOption(65000, 0),
     composeMsg: "",
     oftCmd: ""
 });
 MessagingFee memory fee = oft.quoteSend(sendParam, false);
 
-// 2. Send (for OFTAdapter: approve first)
+// 2. For OFTAdapter: approve token first
 // ERC20(token).approve(adapterAddress, amount);
+
+// 3. Send
 oft.send{value: fee.nativeFee}(sendParam, fee, msg.sender);
 ```
-
-**Quote freshness**: call `quoteSend` as close to `send` as possible — fees change with gas prices.
 
 ---
 
 ## Composed Messages (send + call)
 
-Horizontal composability — token transfer and custom logic execute as separate messages:
+Token transfer and custom logic execute as separate messages — token arrives first, then compose runs.
 
 ```solidity
-// Set to address = composer contract, not end recipient
-SendParam memory sendParam = SendParam({
-    dstEid: dstEid,
-    to: bytes32(uint256(uint160(composerAddress))),
-    amountLD: amount,
-    minAmountLD: amount * 95 / 100,
-    extraOptions: OptionsBuilder.newOptions()
-        .addExecutorLzReceiveOption(65000, 0)   // token transfer + compose queue
-        .addExecutorLzComposeOption(0, 50000, 0), // composer execution
-    composeMsg: abi.encode(finalRecipient, extraParams),
-    oftCmd: ""
-});
+extraOptions: OptionsBuilder.newOptions()
+    .addExecutorLzReceiveOption(65000, 0)    // token transfer
+    .addExecutorLzComposeOption(0, 50000, 0), // compose execution
+composeMsg: abi.encode(finalRecipient, extraParams),
 ```
 
-Composer contract must implement `IOAppComposer`:
+Composer must implement `IOAppComposer` and enforce both guards:
+
 ```solidity
 function lzCompose(
     address _oApp,
@@ -223,27 +138,15 @@ function lzCompose(
     address _executor,
     bytes calldata _extraData
 ) external payable {
-    require(msg.sender == endpoint, "unauthorized");
-    require(_oApp == trustedOFT, "untrusted OApp");
-    // tokens are already credited to composer address at this point
-    uint256 amountLD = OFTComposeMsgCodec.amountLD(_message);
-    bytes memory composeMsg = OFTComposeMsgCodec.composeMsg(_message);
-    // ... custom logic
+    require(msg.sender == endpoint, "!endpoint");
+    require(_oApp == trustedOFT, "!oApp");
+    // tokens already credited to composer at this point
+    // if msg.value is encoded in message, validate it:
+    require(msg.value >= _decodedValue, "insufficient value");
 }
 ```
 
----
-
-## Security Checklist (OFT-specific)
-
-- [ ] Only one OFTAdapter deployed per token (if using Adapter)
-- [ ] Peers set only after full configuration
-- [ ] Enforced options set — `send()` will revert without them
-- [ ] DVNs configured — at least one required DVN per pathway
-- [ ] `setDelegate` called if owner is a multisig
-- [ ] Composer verifies `msg.sender == endpoint` and `_oApp == trustedOFT`
-- [ ] Rate limiting considered for high-value tokens
-- [ ] Fee quote freshness — `quoteSend` called close to `send`
+**`msg.value` in `lzReceive`/`lzCompose` is not guaranteed.** Any caller can execute a verified message. Encode expected `msg.value` inside the message on the source chain and validate it on destination.
 
 ---
 
@@ -256,7 +159,7 @@ contract MyRateLimitedOFT is OFT, RateLimiter {
     function _debit(address _from, uint256 _amountLD, uint256 _minAmountLD, uint32 _dstEid)
         internal override returns (uint256, uint256)
     {
-        _outflow(_dstEid, _amountLD); // check rate limit
+        _outflow(_dstEid, _amountLD);
         return super._debit(_from, _amountLD, _minAmountLD, _dstEid);
     }
 }
@@ -264,8 +167,34 @@ contract MyRateLimitedOFT is OFT, RateLimiter {
 
 ---
 
-## References
-- [LayerZero V2 OFT Quickstart](https://docs.layerzero.network/v2/developers/evm/oft/quickstart)
-- [LayerZero Deployed Contracts](https://docs.layerzero.network/v2/deployments/deployed-contracts)
-- [devtools GitHub](https://github.com/layerzero-labs/devtools)
-- [LayerZero Scan](https://layerzeroscan.com)
+## Security Checklist
+
+### Architecture
+- [ ] Only one OFTAdapter deployed per token globally
+- [ ] Shared decimals consistent across all chains — inconsistency allows double spending
+- [ ] Local decimals on each chain can hold the full intended max supply (overflow risk)
+- [ ] Minter/burner role granted to adapter on token contract (MintBurnOFTAdapter)
+
+### Configuration (per pathway, both directions)
+- [ ] Libraries set explicitly — not relying on defaults
+- [ ] DVNs configured on both send and receive side — at least 2 for production
+- [ ] DVN config consistent on both sides of every pathway
+- [ ] Executor configured with correct max message size
+- [ ] Enforced options set — gas profiled, not guessed
+- [ ] Delegate set before transferring ownership
+- [ ] Peers set last — after everything else
+
+### Ownership
+- [ ] OApp owner set to intended address (multisig on mainnet)
+- [ ] Delegate set to intended address at EndpointV2
+- [ ] Proxy admin / upgrade authority set correctly (if upgradeable)
+- [ ] `_disableInitializers()` in implementation constructor (if upgradeable)
+
+### Code Quality
+- [ ] No mock or test functions in production deployment
+- [ ] No hardcoded endpoint IDs — use admin-restricted setters
+- [ ] Using latest LayerZero packages — not copied source
+- [ ] `_lzReceive` security: `msg.sender == endpoint` and peer validation (built-in if using OAppReceiver)
+- [ ] `lzCompose` security: `msg.sender == endpoint` and `_oApp == trustedOFT` (must add manually)
+- [ ] `msg.value` encoded in message and validated in `lzReceive`/`lzCompose` if value is expected
+- [ ] Fee quote freshness — `quoteSend` called close to `send`

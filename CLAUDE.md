@@ -92,6 +92,17 @@ Never silently guess. Write your best-guess implementation, then flag the assump
 
 ---
 
+## MCP Servers
+
+| When | Server |
+|---|---|
+| Working on LayerZero / OFT | `https://docs.layerzero.network/mcp` |
+
+Connect via Claude Code: `claude mcp add layerzero https://docs.layerzero.network/mcp`
+Use for: DVN addresses, deployment steps, SDK calls, latest package versions — anything that changes between releases.
+
+---
+
 ## Core Principles
 
 - **Simplicity first** — make every change as simple as possible
