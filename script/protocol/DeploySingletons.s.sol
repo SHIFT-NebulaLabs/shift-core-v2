@@ -6,7 +6,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {AddressRegistry} from "src/AddressRegistry.sol";
 import {AdminGateway}    from "src/AdminGateway.sol";
 import {Hub}             from "src/Hub.sol";
-import {GUARDIAN_ROLE} from "src/types/Constants.sol";
+import {ADMIN_ROLE, GUARDIAN_ROLE} from "src/types/Constants.sol";
 
 /// @title  DeploySingletons
 /// @notice Deploys the three protocol singletons:
@@ -22,7 +22,7 @@ import {GUARDIAN_ROLE} from "src/types/Constants.sol";
 ///
 ///         Required .env:
 ///           DEPLOYER_PRIVATE_KEY   — private key of the deploying EOA (no admin role needed)
-///           ADMIN_PRIVATE_KEY      — private key of MULTISIG/admin EOA (needed for grantRole)
+///           ADMIN_PRIVATE_KEY      — private key of MULTISIG/admin EOA (needed for grantRole ADMIN_ROLE + GUARDIAN_ROLE)
 ///           MULTISIG               — address that receives ADMIN_ROLE + TIMELOCK_ADMIN on AdminGateway
 ///           GUARDIAN               — address that receives GUARDIAN_ROLE (can be same as MULTISIG)
 ///           TIMELOCK_DELAY         — minimum delay in seconds (e.g. 172800 = 2 days)
@@ -83,10 +83,11 @@ contract DeploySingletons is Script {
 
         vm.stopBroadcast();
 
-        // 4. Grant GUARDIAN_ROLE — requires DEFAULT_ADMIN_ROLE, held by MULTISIG not deployer.
+        // 4. Grant roles — requires DEFAULT_ADMIN_ROLE, held by MULTISIG not deployer.
         //    Use ADMIN_PRIVATE_KEY for this separate broadcast.
         vm.startBroadcast(adminKey);
-        gateway.grantRole(GUARDIAN_ROLE, guardian);
+        gateway.grantRole(ADMIN_ROLE,     multisig); // enables onlyAdmin functions (setKeeper, unpause, etc.)
+        gateway.grantRole(GUARDIAN_ROLE,  guardian); // enables emergency pause
         vm.stopBroadcast();
 
         // ── Log deployed addresses ────────────────────────────────────────────

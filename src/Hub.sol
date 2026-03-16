@@ -48,6 +48,7 @@ contract Hub is IHub {
     /// @inheritdoc IHub
     function cancelDepositRequest(uint256 _vaultId, uint256 _requestId, address _controller) external {
         // Cancel always available — no vault state check.
+        _requireOwnerOrOperator(_vaultId, _controller, _controller);
         ISyVault(_getSyVault(_vaultId)).cancelDepositRequest(_requestId, _controller);
     }
 
@@ -76,6 +77,7 @@ contract Hub is IHub {
 
     /// @inheritdoc IHub
     function cancelRedeemRequest(uint256 _vaultId, uint256 _requestId, address _controller) external {
+        _requireOwnerOrOperator(_vaultId, _controller, _controller);
         ISyVault(_getSyVault(_vaultId)).cancelRedeemRequest(_requestId, _controller);
     }
 
@@ -109,6 +111,7 @@ contract Hub is IHub {
 
     /// @inheritdoc IHub
     function cancelFastRedeemRequest(uint256 _vaultId, uint256 _requestId, address _controller) external {
+        _requireOwnerOrOperator(_vaultId, _controller, _controller);
         ISyVault(_getSyVault(_vaultId)).cancelFastRedeemRequest(_requestId, _controller);
     }
 

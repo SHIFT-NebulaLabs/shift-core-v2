@@ -43,6 +43,7 @@ contract SyShare is ERC20, ERC20Burnable, ISyShare {
     constructor(string memory _name, string memory _symbol, address _vault)
         ERC20(_name, _symbol)
     {
+        if (_vault == address(0)) revert SyShare__NotVault();
         i_vault = _vault;
     }
 

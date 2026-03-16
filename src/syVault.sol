@@ -95,6 +95,7 @@ contract SyVault is SyVaultRedeem {
         address _feeRecipient,
         uint256 _initialSharePrice
     ) SyVaultBase(_asset, _share, _liquidityPool, _hub, _adminGateway, _keeper, _allocator, _feeRecipient) {
+        if (_initialSharePrice == 0) revert SyVault__InvalidParam();
         s_sharePrice      = _initialSharePrice;
         s_hwm             = _initialSharePrice;
         s_cycleIdCounter  = 1; // 0 reserved as "no active redeem" sentinel

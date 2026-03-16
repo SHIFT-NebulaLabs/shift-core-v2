@@ -9,7 +9,8 @@ import {ILiquidityPool}    from "src/interfaces/ILiquidityPool.sol";
 import {
     LiquidityPool__NotAuthorized,
     LiquidityPool__ExceedsAllowance,
-    LiquidityPool__InsufficientBalance
+    LiquidityPool__InsufficientBalance,
+    LiquidityPool__ZeroAddress
 } from "src/types/Errors.sol";
 
 /// @title  LiquidityPool
@@ -59,6 +60,7 @@ contract LiquidityPool is ReentrancyGuard, ILiquidityPool {
     /// @param _asset  Address of the underlying ERC-20 asset.
     /// @param _vault  Address of the paired syVault.
     constructor(address _asset, address _vault) {
+        if (_asset == address(0) || _vault == address(0)) revert LiquidityPool__ZeroAddress();
         i_asset = IERC20(_asset);
         i_vault = _vault;
     }

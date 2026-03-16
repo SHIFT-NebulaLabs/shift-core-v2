@@ -12,7 +12,8 @@ import {
     SyVault__NotAllocator,
     SyVault__NotAuthorized,
     SyVault__DepositsPaused,
-    SyVault__RedeemsPaused
+    SyVault__RedeemsPaused,
+    SyVault__ZeroAddress
 } from "src/types/Errors.sol";
 import {EPOCH_DURATION} from "src/types/Constants.sol";
 
@@ -154,14 +155,14 @@ abstract contract SyVaultBase is ReentrancyGuard, ISyVault {
         address _allocator,
         address _feeRecipient
     ) {
-        require(_asset        != address(0), "SyVaultBase: zero asset");
-        require(_share        != address(0), "SyVaultBase: zero share");
-        require(_liquidityPool != address(0), "SyVaultBase: zero liquidityPool");
-        require(_hub          != address(0), "SyVaultBase: zero hub");
-        require(_adminGateway != address(0), "SyVaultBase: zero adminGateway");
-        require(_keeper       != address(0), "SyVaultBase: zero keeper");
-        require(_allocator    != address(0), "SyVaultBase: zero allocator");
-        require(_feeRecipient != address(0), "SyVaultBase: zero feeRecipient");
+        if (_asset         == address(0)) revert SyVault__ZeroAddress();
+        if (_share         == address(0)) revert SyVault__ZeroAddress();
+        if (_liquidityPool == address(0)) revert SyVault__ZeroAddress();
+        if (_hub           == address(0)) revert SyVault__ZeroAddress();
+        if (_adminGateway  == address(0)) revert SyVault__ZeroAddress();
+        if (_keeper        == address(0)) revert SyVault__ZeroAddress();
+        if (_allocator     == address(0)) revert SyVault__ZeroAddress();
+        if (_feeRecipient  == address(0)) revert SyVault__ZeroAddress();
 
         i_asset           = IERC20(_asset);
         i_share           = ISyShare(_share);

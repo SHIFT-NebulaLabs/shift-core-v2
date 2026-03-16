@@ -93,6 +93,9 @@ error SyVault__ZeroAmount();
 /// @notice Thrown when a fee parameter exceeds the allowed maximum (BASIS_POINTS).
 error SyVault__InvalidParam();
 
+/// @notice Thrown when a zero address is passed where a valid address is required.
+error SyVault__ZeroAddress();
+
 /*//////////////////////////////////////////////////////////////
                         LIQUIDITYPOOL
 //////////////////////////////////////////////////////////////*/
@@ -105,6 +108,9 @@ error LiquidityPool__ExceedsAllowance();
 
 /// @notice Thrown when the pool has insufficient balance to fulfil the request.
 error LiquidityPool__InsufficientBalance();
+
+/// @notice Thrown when a zero address is passed where a valid address is required.
+error LiquidityPool__ZeroAddress();
 
 /*//////////////////////////////////////////////////////////////
                           SYSHARE
