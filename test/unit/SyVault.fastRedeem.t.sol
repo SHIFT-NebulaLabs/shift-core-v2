@@ -2,7 +2,7 @@
 pragma solidity 0.8.34;
 
 import {Base} from "test/Base.t.sol";
-import {CycleType, RedeemCycle} from "src/types/Types.sol";
+import {CycleType, RedeemCycle, FastRedeemRequestStatus} from "src/types/Types.sol";
 import {
     SyVault__ZeroAmount,
     SyVault__RedeemRequestAlreadyPending,
@@ -285,5 +285,63 @@ contract SyVaultFastRedeemTest is Base {
         vm.prank(alice);
         uint256 aliceReceived = hub.redeem(VAULT_ID, aliceShares, alice, alice);
         assertEq(aliceReceived, aliceAmount);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    requestFastRedeemStatus view
+    //////////////////////////////////////////////////////////////*/
+
+    function test_requestFastRedeemStatus_Ok() external view {
+        assertEq(uint8(vault.requestFastRedeemStatus(alice)), uint8(FastRedeemRequestStatus.Ok));
+    }
+
+    function test_requestFastRedeemStatus_Paused() external {
+        vm.prank(admin);
+        vault.pauseRedeems();
+        assertEq(uint8(vault.requestFastRedeemStatus(alice)), uint8(FastRedeemRequestStatus.Paused));
+    }
+
+    function test_requestFastRedeemStatus_AlreadyPending() external {
+        uint256 shares = _giveShares(alice, 100e18);
+        _requestFastRedeem(alice, shares);
+        assertEq(
+            uint8(vault.requestFastRedeemStatus(alice)),
+            uint8(FastRedeemRequestStatus.AlreadyPending)
+        );
+    }
+
+    function test_requestFastRedeemStatus_AlreadyPending_normalRedeemAlsoCounts() external {
+        uint256 shares = _giveShares(alice, 100e18);
+        _requestRedeem(alice, shares);
+        // Normal redeem pending also blocks fast redeem (shared activeRedeemCycleId).
+        assertEq(
+            uint8(vault.requestFastRedeemStatus(alice)),
+            uint8(FastRedeemRequestStatus.AlreadyPending)
+        );
+    }
+
+    function test_requestFastRedeemStatus_FastCycleSettlementPending() external {
+        // Open a fast cycle and advance past its cutoff without settling.
+        uint256 shares = _giveShares(alice, 100e18);
+        _requestFastRedeem(alice, shares);
+
+        _warpEpochs(FAST_REDEEM_CUTOFF + 1);
+
+        // A new fast request from bob would be blocked — prev cycle not settled.
+        assertEq(
+            uint8(vault.requestFastRedeemStatus(bob)),
+            uint8(FastRedeemRequestStatus.FastCycleSettlementPending)
+        );
+    }
+
+    function test_requestFastRedeemStatus_Ok_afterCycleSettled() external {
+        uint256 sharesAlice = _giveShares(alice, 100e18);
+        uint256 cycleId     = _requestFastRedeem(alice, sharesAlice);
+
+        _warpEpochs(FAST_REDEEM_LOCK_WINDOW);
+        _allocatorSettleCycle(cycleId, 100e18);
+
+        // Cycle settled — bob can now open a new fast cycle.
+        assertEq(uint8(vault.requestFastRedeemStatus(bob)), uint8(FastRedeemRequestStatus.Ok));
     }
 }

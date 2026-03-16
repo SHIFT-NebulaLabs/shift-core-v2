@@ -8,10 +8,12 @@ import {
     SyVault__DepositsPaused,
     SyVault__NotWhitelisted,
     SyVault__MaxTVLExceeded,
+    SyVault__BelowMinDeposit,
     SyVault__NoPendingRequest,
     SyVault__NoClaimableDeposit,
     SyVault__NotHub
 } from "src/types/Errors.sol";
+import {DepositRequestStatus} from "src/types/Types.sol";
 import {Hub__VaultNotActive} from "src/types/Errors.sol";
 import {SHARE_PRICE_PRECISION} from "src/types/Constants.sol";
 
@@ -353,5 +355,71 @@ contract SyVaultDepositTest is Base {
         vault.setDepositWhitelistEnabled(true);
         vm.stopPrank();
         assertEq(uint8(vault.requestDepositStatus(alice)), 2); // NotWhitelisted = 2
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        minDeposit enforcement
+    //////////////////////////////////////////////////////////////*/
+
+    function test_RevertWhen_RequestDeposit_BelowMinDeposit(uint256 minDep, uint256 amount) external {
+        minDep = bound(minDep, 2, type(uint128).max);
+        amount = bound(amount, 1, minDep - 1);
+
+        vm.prank(admin);
+        vault.setMinDeposit(minDep);
+
+        _giveAssets(alice, amount);
+        vm.prank(alice);
+        vm.expectRevert(SyVault__BelowMinDeposit.selector);
+        hub.requestDeposit(VAULT_ID, amount, alice, alice);
+    }
+
+    function test_requestDeposit_atMinDeposit_succeeds(uint256 minDep) external {
+        minDep = bound(minDep, 1, 1_000_000e18);
+
+        vm.prank(admin);
+        vault.setMinDeposit(minDep);
+
+        _giveAssets(alice, minDep);
+        vm.prank(alice);
+        hub.requestDeposit(VAULT_ID, minDep, alice, alice); // must not revert
+        assertEq(vault.pendingDepositAssets(), minDep);
+    }
+
+    function test_requestDeposit_noMinDeposit_zeroAllowed() external {
+        // minDeposit = 0 means no minimum — only ZeroAmount reverts.
+        assertEq(vault.minDeposit(), 0);
+        _giveAssets(alice, 1);
+        vm.prank(alice);
+        hub.requestDeposit(VAULT_ID, 1, alice, alice);
+        assertEq(vault.pendingDepositAssets(), 1);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        checkDepositAmount view
+    //////////////////////////////////////////////////////////////*/
+
+    function test_checkDepositAmount_ok_whenNoMin() external view {
+        assertEq(uint8(vault.checkDepositAmount(1)), uint8(DepositRequestStatus.Ok));
+    }
+
+    function test_checkDepositAmount_ok_atOrAboveMin(uint256 minDep, uint256 amount) external {
+        minDep = bound(minDep, 1, type(uint128).max);
+        amount = bound(amount, minDep, type(uint128).max);
+
+        vm.prank(admin);
+        vault.setMinDeposit(minDep);
+
+        assertEq(uint8(vault.checkDepositAmount(amount)), uint8(DepositRequestStatus.Ok));
+    }
+
+    function test_checkDepositAmount_belowMin(uint256 minDep, uint256 amount) external {
+        minDep = bound(minDep, 2, type(uint128).max);
+        amount = bound(amount, 1, minDep - 1);
+
+        vm.prank(admin);
+        vault.setMinDeposit(minDep);
+
+        assertEq(uint8(vault.checkDepositAmount(amount)), uint8(DepositRequestStatus.BelowMinDeposit));
     }
 }
