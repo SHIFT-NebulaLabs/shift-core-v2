@@ -37,6 +37,27 @@ contract SyOFTAdapter is OFTAdapter, RateLimiter {
     {}
 
     /*//////////////////////////////////////////////////////////////
+                    RATE LIMITING — CONFIGURATION
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Set outbound rate limits per destination chain.
+    ///         Rate limits are REQUIRED — a limit of 0 (default) blocks all sends.
+    ///         Must be called by the owner (multisig) before the adapter can be used.
+    /// @param _rateLimitConfigs Array of {dstEid, limit, window} configurations.
+    function setRateLimits(RateLimiter.RateLimitConfig[] calldata _rateLimitConfigs)
+        external
+        onlyOwner
+    {
+        _setRateLimits(_rateLimitConfigs);
+    }
+
+    /// @notice Reset (clear) outbound rate limits for the given destination chains.
+    /// @param _eids Destination endpoint IDs to reset.
+    function resetRateLimits(uint32[] calldata _eids) external onlyOwner {
+        _resetRateLimits(_eids);
+    }
+
+    /*//////////////////////////////////////////////////////////////
                         RATE LIMITING — OVERRIDE
     //////////////////////////////////////////////////////////////*/
 
