@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {CycleState, RedeemCycle, SharePriceSnapshot, DepositRequestStatus, RedeemRequestStatus} from "src/types/Types.sol";
+import {CycleState, RedeemCycle, SharePriceSnapshot, DepositRequestStatus, RedeemRequestStatus, FastRedeemRequestStatus} from "src/types/Types.sol";
 
 /// @title  ISyVault
 /// @author Shift Protocol
@@ -135,17 +135,47 @@ interface ISyVault {
     /// @param  scope  "deposits", "redeems", or "full".
     event VaultUnpaused(string scope);
 
-    /// @notice Emitted on every configuration change.
-    /// @param  paramName  Human-readable parameter name.
-    /// @param  oldValue   Previous value (abi-encoded).
-    /// @param  newValue   New value (abi-encoded).
-    event ParameterUpdated(string paramName, bytes oldValue, bytes newValue);
+    /// @notice Emitted when the Keeper address is rotated.
+    event KeeperUpdated(address indexed oldKeeper, address indexed newKeeper);
 
-    /// @notice Emitted when a whitelist entry is added or removed.
-    /// @param  whitelist  Identifier of the whitelist (e.g. "deposit", "feeExempt", "fastRedeemFee").
-    /// @param  account    Address that was updated.
-    /// @param  approved   True if added, false if removed.
-    event WhitelistUpdated(string whitelist, address indexed account, bool approved);
+    /// @notice Emitted when the Allocator address is rotated.
+    event AllocatorUpdated(address indexed oldAllocator, address indexed newAllocator);
+
+    /// @notice Emitted when the fee recipient is changed.
+    event FeeRecipientUpdated(address indexed oldFeeRecipient, address indexed newFeeRecipient);
+
+    /// @notice Emitted when the max TVL cap is changed (0 = unlimited).
+    event MaxTvlUpdated(uint256 oldMaxTvl, uint256 newMaxTvl);
+
+    /// @notice Emitted when the minimum deposit amount is changed (0 = no minimum).
+    event MinDepositUpdated(uint256 oldMinDeposit, uint256 newMinDeposit);
+
+    /// @notice Emitted when the max share price delta per epoch is changed.
+    event MaxSharePriceDeltaUpdated(uint256 oldDelta, uint256 newDelta);
+
+    /// @notice Emitted when the max stale price epochs threshold is changed.
+    event MaxStalePriceEpochsUpdated(uint256 oldEpochs, uint256 newEpochs);
+
+    /// @notice Emitted when the maintenance fee collection interval is changed.
+    event MaintenanceFeeIntervalUpdated(uint256 oldInterval, uint256 newInterval);
+
+    /// @notice Emitted when the performance fee basis points is changed.
+    event PerformanceFeeBpsUpdated(uint256 oldBps, uint256 newBps);
+
+    /// @notice Emitted when the maintenance fee basis points is changed.
+    event MaintenanceFeeBpsUpdated(uint256 oldBps, uint256 newBps);
+
+    /// @notice Emitted when the fast redeem fee basis points is changed.
+    event FastRedeemFeeBpsUpdated(uint256 oldBps, uint256 newBps);
+
+    /// @notice Emitted when the deposit whitelist is enabled or disabled.
+    event DepositWhitelistEnabledUpdated(bool enabled);
+
+    /// @notice Emitted when a deposit whitelist entry is added or removed.
+    event DepositWhitelistUpdated(address indexed account, bool approved);
+
+    /// @notice Emitted when a fast redeem fee whitelist entry is added or removed.
+    event FastRedeemFeeWhitelistUpdated(address indexed account, bool approved);
 
     /*//////////////////////////////////////////////////////////////
                         EIP-7540 — WRITE
@@ -358,10 +388,19 @@ interface ISyVault {
     /// @return status      Ok if request can proceed; otherwise the blocking reason.
     function requestDepositStatus(address controller) external view returns (DepositRequestStatus status);
 
+    /// @notice Amount-level check — returns BelowMinDeposit if assets < minDeposit, otherwise Ok.
+    /// @dev    Complement to requestDepositStatus() which is amount-agnostic.
+    function checkDepositAmount(uint256 assets) external view returns (DepositRequestStatus status);
+
     /// @notice Single-call eligibility check for requestRedeem — use in FE to surface a reason.
     /// @param  owner   Address that will lock shares.
-    /// @return status  Ok if request can proceed; otherwise the blocking reason.
+    /// @return status  Ok if request can proceed; PastCutoff means it will open a new cycle (not blocking).
     function requestRedeemStatus(address owner) external view returns (RedeemRequestStatus status);
+
+    /// @notice Pre-flight check for requestFastRedeem(). Returns the reason the call would revert, or Ok.
+    /// @param  owner   Address that will lock shares.
+    /// @return status  Ok if request can proceed; otherwise the blocking reason.
+    function requestFastRedeemStatus(address owner) external view returns (FastRedeemRequestStatus status);
 
     /// @notice MUST revert — async vault, no synchronous preview. EIP-7540 compliance.
     function previewDeposit(uint256 assets) external view returns (uint256);
@@ -522,6 +561,7 @@ interface ISyVault {
     function feeRecipient()            external view returns (address);
     function adminGateway()            external view returns (address);
     function maxTvl()                  external view returns (uint256);
+    function minDeposit()              external view returns (uint256);
     function maxSharePriceDelta()      external view returns (uint256);
     function maxStalePriceEpochs()     external view returns (uint256);
     function maintenanceFeeInterval()  external view returns (uint256);
@@ -580,6 +620,8 @@ interface ISyVault {
 
     /// @notice Set the maximum TVL cap (raw asset units). 0 = no cap. onlyAdminGateway.
     function setMaxTvl(uint256 maxTVL) external;
+    /// @notice Set the minimum deposit amount (raw asset units). 0 = no minimum. onlyAdminGateway.
+    function setMinDeposit(uint256 minDeposit) external;
     /// @notice Set max allowed share price move per epoch in basis points. onlyAdminGateway.
     function setMaxSharePriceDelta(uint256 delta) external;
     /// @notice Set max epochs the keeper can be behind before deposits are blocked. onlyAdminGateway.

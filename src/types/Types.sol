@@ -29,16 +29,24 @@ enum DepositRequestStatus {
     Paused,         // Vault is fully paused or deposits are paused.
     NotWhitelisted, // Deposit whitelist is enabled and caller is not on it.
     TVLExceeded,    // Deposit would push TVL above maxTVL.
-    StalePrice      // Keeper is too far behind — share price is stale.
+    StalePrice,     // Keeper is too far behind — share price is stale.
+    BelowMinDeposit // Deposit amount is below the minimum deposit threshold.
 }
 
-/// @notice Result of a requestRedeem eligibility check.
+/// @notice Result of a requestRedeem (normal) eligibility check.
 enum RedeemRequestStatus {
-    Ok,                      // Request can proceed.
-    Paused,                  // Vault is fully paused or redeems are paused.
-    AlreadyPending,          // Owner already has an active redeem request.
-    PastCutoff,              // Current normal cycle is past cutoff — request will go to next cycle.
-    FastCycleSettlementPending // Current fast cycle is past cutoff but not yet settled — wait for Allocator.
+    Ok,             // Request can proceed (may open a new cycle if past cutoff).
+    Paused,         // Vault is fully paused or redeems are paused.
+    AlreadyPending, // Owner already has an active redeem request.
+    PastCutoff      // Current cycle is past cutoff — request will be placed in the next cycle.
+}
+
+/// @notice Result of a requestFastRedeem eligibility check.
+enum FastRedeemRequestStatus {
+    Ok,                        // Request can proceed.
+    Paused,                    // Vault is fully paused or redeems are paused.
+    AlreadyPending,            // Owner already has an active redeem request.
+    FastCycleSettlementPending // Current fast cycle is past cutoff and not yet settled — wait for Allocator.
 }
 
 /// @notice Progression state of a redeem cycle from the perspective of incoming requests.

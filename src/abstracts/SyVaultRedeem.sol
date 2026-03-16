@@ -89,7 +89,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         // One active redeem per owner at a time.
         if (s_activeRedeemCycleId[_owner] != 0) revert SyVault__RedeemRequestAlreadyPending();
 
-        requestId = _openOrReuseCycle(false);
+        requestId = _openOrReuseCycle(CycleType.Normal);
 
         s_redeemCycles[requestId].shares             += _shares;
         s_pendingRedeems[_controller][requestId]     += _shares;
@@ -138,7 +138,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         // No active redeem of any kind allowed.
         if (s_activeRedeemCycleId[_owner] != 0) revert SyVault__RedeemRequestAlreadyPending();
 
-        requestId = _openOrReuseCycle(true);
+        requestId = _openOrReuseCycle(CycleType.Fast);
 
         s_redeemCycles[requestId].shares             += _shares;
         s_pendingRedeems[_controller][requestId]     += _shares;
@@ -301,8 +301,8 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
 
     /// @dev Open or reuse the current cycle for the given type.
     ///      Advances to a new cycle id if no cycle exists or current one is past cutoff.
-    function _openOrReuseCycle(bool _isFast) internal returns (uint256 cycleId) {
-        if (_isFast) {
+    function _openOrReuseCycle(CycleType _cycleType) internal returns (uint256 cycleId) {
+        if (_cycleType == CycleType.Fast) {
             if (s_currentFastCycleId == 0 || currentEpoch() >= s_redeemCycles[s_currentFastCycleId].cutoffEpoch) {
                 // Only one unsettled fast cycle at a time — Allocator handles one per day.
                 if (s_currentFastCycleId != 0 && !s_redeemCycles[s_currentFastCycleId].settled) {

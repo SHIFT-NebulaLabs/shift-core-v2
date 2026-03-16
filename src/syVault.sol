@@ -12,6 +12,7 @@ import {
     SyVault__ZeroAmount,
     SyVault__NotWhitelisted,
     SyVault__MaxTVLExceeded,
+    SyVault__BelowMinDeposit,
     SyVault__InvalidOwner,
     SyVault__NoPendingRequest,
     SyVault__NoClaimableDeposit,
@@ -23,7 +24,7 @@ import {
     BASIS_POINTS,
     EPOCH_DURATION
 } from "src/types/Constants.sol";
-import {DepositRequestStatus, RedeemRequestStatus} from "src/types/Types.sol";
+import {DepositRequestStatus, RedeemRequestStatus, FastRedeemRequestStatus} from "src/types/Types.sol";
 
 /// @title  syVault
 /// @author Shift Protocol
@@ -126,6 +127,7 @@ contract SyVault is SyVaultRedeem {
         returns (uint256 requestId)
     {
         if (_assets == 0) revert SyVault__ZeroAmount();
+        if (s_minDeposit > 0 && _assets < s_minDeposit) revert SyVault__BelowMinDeposit();
 
         // Deposit whitelist check (on controller, since controller owns the claim).
         if (s_depositWhitelistEnabled && !s_depositWhitelist[_controller]) {
@@ -334,19 +336,19 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function setKeeper(address _keeper) external onlyAdminGateway {
-        emit ParameterUpdated("keeper", abi.encode(s_keeper), abi.encode(_keeper));
+        emit KeeperUpdated(s_keeper, _keeper);
         s_keeper = _keeper;
     }
 
     /// @inheritdoc ISyVault
     function setAllocator(address _allocator) external onlyAdminGateway {
-        emit ParameterUpdated("allocator", abi.encode(s_allocator), abi.encode(_allocator));
+        emit AllocatorUpdated(s_allocator, _allocator);
         s_allocator = _allocator;
     }
 
     /// @inheritdoc ISyVault
     function setFeeRecipient(address _feeRecipient) external onlyAdminGateway {
-        emit ParameterUpdated("feeRecipient", abi.encode(s_feeRecipient), abi.encode(_feeRecipient));
+        emit FeeRecipientUpdated(s_feeRecipient, _feeRecipient);
         s_feeRecipient = _feeRecipient;
     }
 
@@ -356,46 +358,52 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function setMaxTvl(uint256 _maxTVL) external onlyAdminGateway {
-        emit ParameterUpdated("maxTVL", abi.encode(s_maxTVL), abi.encode(_maxTVL));
+        emit MaxTvlUpdated(s_maxTVL, _maxTVL);
         s_maxTVL = _maxTVL;
     }
 
     /// @inheritdoc ISyVault
+    function setMinDeposit(uint256 _minDeposit) external onlyAdminGateway {
+        emit MinDepositUpdated(s_minDeposit, _minDeposit);
+        s_minDeposit = _minDeposit;
+    }
+
+    /// @inheritdoc ISyVault
     function setMaxSharePriceDelta(uint256 _delta) external onlyAdminGateway {
-        emit ParameterUpdated("maxSharePriceDelta", abi.encode(s_maxSharePriceDelta), abi.encode(_delta));
+        emit MaxSharePriceDeltaUpdated(s_maxSharePriceDelta, _delta);
         s_maxSharePriceDelta = _delta;
     }
 
     /// @inheritdoc ISyVault
     function setMaxStalePriceEpochs(uint256 _epochs) external onlyAdminGateway {
-        emit ParameterUpdated("maxStalePriceEpochs", abi.encode(s_maxStalePriceEpochs), abi.encode(_epochs));
+        emit MaxStalePriceEpochsUpdated(s_maxStalePriceEpochs, _epochs);
         s_maxStalePriceEpochs = _epochs;
     }
 
     /// @inheritdoc ISyVault
     function setMaintenanceFeeInterval(uint256 _interval) external onlyAdminGateway {
-        emit ParameterUpdated("maintenanceFeeInterval", abi.encode(s_maintenanceFeeInterval), abi.encode(_interval));
+        emit MaintenanceFeeIntervalUpdated(s_maintenanceFeeInterval, _interval);
         s_maintenanceFeeInterval = _interval;
     }
 
     /// @inheritdoc ISyVault
     function setPerformanceFeeBps(uint256 _bps) external onlyAdminGateway {
         if (_bps > BASIS_POINTS) revert SyVault__InvalidParam();
-        emit ParameterUpdated("performanceFeeBps", abi.encode(s_performanceFeeBps), abi.encode(_bps));
+        emit PerformanceFeeBpsUpdated(s_performanceFeeBps, _bps);
         s_performanceFeeBps = _bps;
     }
 
     /// @inheritdoc ISyVault
     function setMaintenanceFeeBps(uint256 _bps) external onlyAdminGateway {
         if (_bps > BASIS_POINTS) revert SyVault__InvalidParam();
-        emit ParameterUpdated("maintenanceFeeBps", abi.encode(s_maintenanceFeeBps), abi.encode(_bps));
+        emit MaintenanceFeeBpsUpdated(s_maintenanceFeeBps, _bps);
         s_maintenanceFeeBps = _bps;
     }
 
     /// @inheritdoc ISyVault
     function setFastRedeemFeeBps(uint256 _bps) external onlyAdminGateway {
         if (_bps > BASIS_POINTS) revert SyVault__InvalidParam();
-        emit ParameterUpdated("fastRedeemFeeBps", abi.encode(s_fastRedeemFeeBps), abi.encode(_bps));
+        emit FastRedeemFeeBpsUpdated(s_fastRedeemFeeBps, _bps);
         s_fastRedeemFeeBps = _bps;
     }
 
@@ -405,20 +413,20 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function setDepositWhitelistEnabled(bool _enabled) external onlyAdminGateway {
-        emit ParameterUpdated("depositWhitelistEnabled", abi.encode(s_depositWhitelistEnabled), abi.encode(_enabled));
+        emit DepositWhitelistEnabledUpdated(_enabled);
         s_depositWhitelistEnabled = _enabled;
     }
 
     /// @inheritdoc ISyVault
     function setDepositWhitelist(address _account, bool _approved) external onlyAdminGateway {
         s_depositWhitelist[_account] = _approved;
-        emit WhitelistUpdated("deposit", _account, _approved);
+        emit DepositWhitelistUpdated(_account, _approved);
     }
 
     /// @inheritdoc ISyVault
     function setFastRedeemFeeWhitelist(address _account, bool _approved) external onlyAdminGateway {
         s_fastRedeemFeeWhitelist[_account] = _approved;
-        emit WhitelistUpdated("fastRedeemFee", _account, _approved);
+        emit FastRedeemFeeWhitelistUpdated(_account, _approved);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -487,6 +495,23 @@ contract SyVault is SyVaultRedeem {
     }
 
     /// @inheritdoc ISyVault
+    /// @dev Always reverts — async vault has no synchronous price preview (EIP-7540 compliance).
+    function previewDeposit(uint256) external pure returns (uint256) { revert SyVault__AsyncVault(); }
+
+    /// @inheritdoc ISyVault
+    function previewMint(uint256) external pure returns (uint256) { revert SyVault__AsyncVault(); }
+
+    /// @inheritdoc ISyVault
+    function previewRedeem(uint256) external pure returns (uint256) { revert SyVault__AsyncVault(); }
+
+    /// @inheritdoc ISyVault
+    function previewWithdraw(uint256) external pure returns (uint256) { revert SyVault__AsyncVault(); }
+
+    /*//////////////////////////////////////////////////////////////
+               EXTERNAL VIEW — PRE-FLIGHT ELIGIBILITY CHECKS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc ISyVault
     function requestDepositStatus(address _controller) external view returns (DepositRequestStatus) {
         if (s_pausedFull || s_pausedDeposits) return DepositRequestStatus.Paused;
         if (s_depositWhitelistEnabled && !s_depositWhitelist[_controller]) return DepositRequestStatus.NotWhitelisted;
@@ -502,36 +527,30 @@ contract SyVault is SyVaultRedeem {
     }
 
     /// @inheritdoc ISyVault
+    /// @dev Complements requestDepositStatus() — that check is amount-agnostic; this one validates the amount.
+    function checkDepositAmount(uint256 _assets) external view returns (DepositRequestStatus) {
+        if (s_minDeposit > 0 && _assets < s_minDeposit) return DepositRequestStatus.BelowMinDeposit;
+        return DepositRequestStatus.Ok;
+    }
+
+    /// @inheritdoc ISyVault
     function requestRedeemStatus(address _owner) external view returns (RedeemRequestStatus) {
         if (s_pausedFull || s_pausedRedeems) return RedeemRequestStatus.Paused;
         if (s_activeRedeemCycleId[_owner] != 0) return RedeemRequestStatus.AlreadyPending;
         if (s_currentNormalCycleId != 0 && currentEpoch() >= s_redeemCycles[s_currentNormalCycleId].cutoffEpoch)
             return RedeemRequestStatus.PastCutoff;
-        if (s_currentFastCycleId != 0
-            && currentEpoch() >= s_redeemCycles[s_currentFastCycleId].cutoffEpoch
-            && !s_redeemCycles[s_currentFastCycleId].settled)
-            return RedeemRequestStatus.FastCycleSettlementPending;
         return RedeemRequestStatus.Ok;
     }
 
     /// @inheritdoc ISyVault
-    function previewDeposit(uint256) external pure returns (uint256) {
-        revert SyVault__AsyncVault();
-    }
-
-    /// @inheritdoc ISyVault
-    function previewMint(uint256) external pure returns (uint256) {
-        revert SyVault__AsyncVault();
-    }
-
-    /// @inheritdoc ISyVault
-    function previewRedeem(uint256) external pure returns (uint256) {
-        revert SyVault__AsyncVault();
-    }
-
-    /// @inheritdoc ISyVault
-    function previewWithdraw(uint256) external pure returns (uint256) {
-        revert SyVault__AsyncVault();
+    function requestFastRedeemStatus(address _owner) external view returns (FastRedeemRequestStatus) {
+        if (s_pausedFull || s_pausedRedeems) return FastRedeemRequestStatus.Paused;
+        if (s_activeRedeemCycleId[_owner] != 0) return FastRedeemRequestStatus.AlreadyPending;
+        if (s_currentFastCycleId != 0
+            && currentEpoch() >= s_redeemCycles[s_currentFastCycleId].cutoffEpoch
+            && !s_redeemCycles[s_currentFastCycleId].settled)
+            return FastRedeemRequestStatus.FastCycleSettlementPending;
+        return FastRedeemRequestStatus.Ok;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -599,7 +618,10 @@ contract SyVault is SyVaultRedeem {
     function adminGateway() external view returns (address) { return i_adminGateway; }
 
     /// @inheritdoc ISyVault
-    function maxTvl() external view returns (uint256) { return s_maxTVL; }
+    function maxTvl()    external view returns (uint256) { return s_maxTVL; }
+
+    /// @inheritdoc ISyVault
+    function minDeposit() external view returns (uint256) { return s_minDeposit; }
 
     /// @inheritdoc ISyVault
     function maxSharePriceDelta() external view returns (uint256) { return s_maxSharePriceDelta; }

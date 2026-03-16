@@ -9,7 +9,6 @@ import {ISyVault}  from "src/interfaces/ISyVault.sol";
 import {ISyShare}  from "src/interfaces/ISyShare.sol";
 import {
     SyVault__NotHub,
-    SyVault__NotKeeper,
     SyVault__NotAllocator,
     SyVault__NotAuthorized,
     SyVault__DepositsPaused,
@@ -75,6 +74,7 @@ abstract contract SyVaultBase is ReentrancyGuard, ISyVault {
     //////////////////////////////////////////////////////////////*/
 
     uint256 internal s_maxTVL;
+    uint256 internal s_minDeposit;
     uint256 internal s_maxSharePriceDelta;      // basis points
     uint256 internal s_maxStalePriceEpochs;
     uint256 internal s_maintenanceFeeInterval;  // epochs between maintenance fee collections
@@ -106,12 +106,6 @@ abstract contract SyVaultBase is ReentrancyGuard, ISyVault {
 
     function _onlyHub() internal view {
         if (msg.sender != i_hub) revert SyVault__NotHub();
-    }
-
-    modifier onlyKeeper() { _onlyKeeper(); _; }
-
-    function _onlyKeeper() internal view {
-        if (msg.sender != s_keeper) revert SyVault__NotKeeper();
     }
 
     modifier onlyAllocator() { _onlyAllocator(); _; }

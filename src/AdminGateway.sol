@@ -202,6 +202,11 @@ contract AdminGateway is TimelockController {
         ISyVault(_getSyVault(_vaultId)).setMaxTvl(_maxTVL);
     }
 
+    /// @notice Set minimum deposit amount for a vault (raw asset units). 0 = no minimum. onlyAdmin.
+    function setMinDeposit(uint256 _vaultId, uint256 _minDeposit) external onlyAdmin {
+        ISyVault(_getSyVault(_vaultId)).setMinDeposit(_minDeposit);
+    }
+
     /// @notice Set max share price move per epoch (basis points). onlyAdmin.
     function setMaxSharePriceDelta(uint256 _vaultId, uint256 _delta) external onlyAdmin {
         ISyVault(_getSyVault(_vaultId)).setMaxSharePriceDelta(_delta);

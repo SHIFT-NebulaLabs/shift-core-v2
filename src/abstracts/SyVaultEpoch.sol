@@ -116,6 +116,23 @@ abstract contract SyVaultEpoch is SyVaultBase {
     /// @dev Applies maintenance fee (share price deduction) and performance fee (share dilution).
     ///      Returns the price after maintenance deduction (performance fee does not change price).
     function _collectFees(uint256 _epoch, uint256 _price) internal returns (uint256) {
+        // ── Performance fee ────────────────────────────────────────────────────────────────
+        // Evaluated against the gross reported price before maintenance deduction, so the
+        // HWM comparison is never affected by operational costs.
+        uint256 hwm            = s_hwm;
+        uint256 feeSharesMinted;
+        if (_price > hwm && s_performanceFeeBps > 0) {
+            uint256 supply = i_share.totalSupply();
+            if (supply > 0) {
+                // Dilution model: feeShares = (price − HWM) × supply × feeBps / (price × BASIS_POINTS)
+                feeSharesMinted = ((_price - hwm) * supply * s_performanceFeeBps)
+                    / (_price * BASIS_POINTS);
+                if (feeSharesMinted > 0) i_share.mint(s_feeRecipient, feeSharesMinted);
+            }
+            s_hwm = _price;
+            emit PerformanceFeeCollected(_epoch, _price, hwm, feeSharesMinted);
+        }
+
         // ── Maintenance fee ────────────────────────────────────────────────────────────────
         if (s_maintenanceFeeInterval > 0 && s_maintenanceFeeBps > 0
             && (_epoch % s_maintenanceFeeInterval) == 0)
@@ -132,21 +149,6 @@ abstract contract SyVaultEpoch is SyVaultBase {
                 _price
             );
             s_lastFeeCollectionEpoch = _epoch;
-        }
-
-        // ── Performance fee ────────────────────────────────────────────────────────────────
-        uint256 hwm            = s_hwm;
-        uint256 feeSharesMinted;
-        if (_price > hwm && s_performanceFeeBps > 0) {
-            uint256 supply = i_share.totalSupply();
-            if (supply > 0) {
-                // Dilution model: feeShares = (price − HWM) × supply × feeBps / (price × BASIS_POINTS)
-                feeSharesMinted = ((_price - hwm) * supply * s_performanceFeeBps)
-                    / (_price * BASIS_POINTS);
-                if (feeSharesMinted > 0) i_share.mint(s_feeRecipient, feeSharesMinted);
-            }
-            s_hwm = _price;
-            emit PerformanceFeeCollected(_epoch, _price, hwm, feeSharesMinted);
         }
 
         return _price;

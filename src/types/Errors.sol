@@ -33,6 +33,9 @@ error SyVault__RedeemsPaused();
 /// @notice Thrown when a deposit would push TVL above maxTVL.
 error SyVault__MaxTVLExceeded();
 
+/// @notice Thrown when a deposit amount is below the minimum deposit threshold.
+error SyVault__BelowMinDeposit();
+
 /// @notice Thrown when caller is not on the deposit whitelist.
 error SyVault__NotWhitelisted();
 
