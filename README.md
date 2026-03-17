@@ -136,33 +136,49 @@ Controlled by `RATE_LIMIT_AMOUNT` and `RATE_LIMIT_WINDOW` in `.env`.
 
 Explicitly pins `SendUln302` / `ReceiveUln302` to the OFT contracts on the LayerZero Endpoint. Skip on testnet — the defaults already point to the right library.
 
+Each command handles **both directions** on its chain:
+- `wire-libs-home` pins send lib (A→B) and receive lib (B→A) on the home chain
+- `wire-libs-remote` pins receive lib (A→B) and send lib (B→A) on the remote chain
+
 ```bash
 make wire-libs-home        # HOME_RPC in .env
 make wire-libs-remote      # REMOTE_RPC in .env
 ```
 
-Uses `SEND_LIB` and `RECEIVE_LIB` from `.env`.
+Key `.env` variables:
+
+| Variable            | Direction | Description                                  |
+|---------------------|-----------|----------------------------------------------|
+| `SEND_LIB`          | A→B send  | SendUln302 on **home** chain                 |
+| `HOME_RECEIVE_LIB`  | B→A recv  | ReceiveUln302 on **home** chain              |
+| `RECEIVE_LIB`       | A→B recv  | ReceiveUln302 on **remote** chain            |
+| `REMOTE_SEND_LIB`   | B→A send  | SendUln302 on **remote** chain               |
 
 ### Step 8 — DVN + Executor config (mainnet only)
 
-Sets which DVNs must verify each message and which Executor pays gas on the destination. The send config (home) and receive config (remote) **must match exactly** — same DVN set, same block confirmations — or messages will be permanently blocked.
+Sets which DVNs must verify each message and which Executor pays gas on the destination. DVN set and block confirmations **must match exactly** on send and receive sides or messages will be permanently blocked.
+
+Each command handles **both directions** on its chain:
+- `wire-dvn-home` sets A→B send config (DVN + Executor via `SEND_LIB`) and B→A receive config (DVN via `HOME_RECEIVE_LIB`)
+- `wire-dvn-remote` sets A→B receive config (DVN via `RECEIVE_LIB`) and B→A send config (DVN + Executor via `REMOTE_SEND_LIB`)
 
 ```bash
-make wire-dvn-home         # HOME_RPC in .env   (send config)
-make wire-dvn-remote       # REMOTE_RPC in .env (receive config)
+make wire-dvn-home         # HOME_RPC in .env
+make wire-dvn-remote       # REMOTE_RPC in .env
 ```
 
 Key `.env` variables:
 
-| Variable            | Description                                         |
-|---------------------|-----------------------------------------------------|
-| `DVN_COUNT`         | `1` testnet / `2` mainnet                           |
-| `DVN_HOME`          | LZ DVN address on the **home** chain                |
-| `DVN_REMOTE`        | LZ DVN address on the **remote** chain              |
-| `DVN_HOME_2`        | Second DVN on home chain (mainnet, `DVN_COUNT=2`)   |
-| `DVN_REMOTE_2`      | Second DVN on remote chain (mainnet, `DVN_COUNT=2`) |
-| `EXECUTOR`          | LayerZero Executor on home chain                    |
-| `BLOCK_CONFIRMATIONS` | Must be identical on both sides                   |
+| Variable              | Direction | Description                                         |
+|-----------------------|-----------|-----------------------------------------------------|
+| `DVN_COUNT`           | both      | `1` testnet / `2` mainnet                           |
+| `DVN_HOME`            | A→B+B→A   | LZ DVN address on the **home** chain                |
+| `DVN_REMOTE`          | A→B+B→A   | LZ DVN address on the **remote** chain              |
+| `DVN_HOME_2`          | A→B+B→A   | Second DVN on home chain (mainnet, `DVN_COUNT=2`)   |
+| `DVN_REMOTE_2`        | A→B+B→A   | Second DVN on remote chain (mainnet, `DVN_COUNT=2`) |
+| `EXECUTOR`            | A→B send  | LayerZero Executor on **home** chain                |
+| `REMOTE_EXECUTOR`     | B→A send  | LayerZero Executor on **remote** chain              |
+| `BLOCK_CONFIRMATIONS` | both      | Must be identical on both sides                     |
 
 DVN addresses for each chain: https://docs.layerzero.network/v2/deployments/chains
 
@@ -185,19 +201,21 @@ When a vault bridges to more than one remote chain (e.g., Base Sepolia + Optimis
 
 ```bash
 # Wire Base Sepolia peer
-make wire-options-remote  REMOTE_RPC=https://sepolia.base.org         PEER=0xABC... ADAPTER_EID=40231 PEER_EID=40245
-make wire-ratelimit                                                    PEER_EID=40245
-make wire-dvn-remote      REMOTE_RPC=https://sepolia.base.org         PEER=0xABC... RECEIVE_LIB=0x... DVN_REMOTE=0x...
-make wire-peers-remote    REMOTE_RPC=https://sepolia.base.org         PEER=0xABC... ADAPTER_EID=40231
+make wire-options-remote  REMOTE_RPC=https://sepolia.base.org    PEER=0xABC... ADAPTER_EID=40231 PEER_EID=40245
+make wire-libs-remote     REMOTE_RPC=https://sepolia.base.org    PEER=0xABC... ADAPTER_EID=40231 RECEIVE_LIB=0x... REMOTE_SEND_LIB=0x...
+make wire-dvn-remote      REMOTE_RPC=https://sepolia.base.org    PEER=0xABC... ADAPTER_EID=40231 RECEIVE_LIB=0x... REMOTE_SEND_LIB=0x... DVN_REMOTE=0x... REMOTE_EXECUTOR=0x...
+make wire-peers-remote    REMOTE_RPC=https://sepolia.base.org    PEER=0xABC... ADAPTER_EID=40231
 
 # Wire Optimism Sepolia peer
-make wire-options-remote  REMOTE_RPC=https://sepolia.optimism.io      PEER=0xDEF... ADAPTER_EID=40231 PEER_EID=40232
-make wire-dvn-remote      REMOTE_RPC=https://sepolia.optimism.io      PEER=0xDEF... RECEIVE_LIB=0x... DVN_REMOTE=0x...
-make wire-peers-remote    REMOTE_RPC=https://sepolia.optimism.io      PEER=0xDEF... ADAPTER_EID=40231
+make wire-options-remote  REMOTE_RPC=https://sepolia.optimism.io PEER=0xDEF... ADAPTER_EID=40231 PEER_EID=40232
+make wire-libs-remote     REMOTE_RPC=https://sepolia.optimism.io PEER=0xDEF... ADAPTER_EID=40231 RECEIVE_LIB=0x... REMOTE_SEND_LIB=0x...
+make wire-dvn-remote      REMOTE_RPC=https://sepolia.optimism.io PEER=0xDEF... ADAPTER_EID=40231 RECEIVE_LIB=0x... REMOTE_SEND_LIB=0x... DVN_REMOTE=0x... REMOTE_EXECUTOR=0x...
+make wire-peers-remote    REMOTE_RPC=https://sepolia.optimism.io PEER=0xDEF... ADAPTER_EID=40231
 ```
 
 Command-line variable assignments override `.env` — they have the highest Make precedence.
-The adapter only needs `wire-options-home`, `wire-ratelimit`, `wire-libs-home`, `wire-dvn-home` run once per new peer EID (or re-run the same commands with `PEER_EID` overridden).
+
+For the **home-side** commands (`wire-options-home`, `wire-ratelimit`, `wire-libs-home`, `wire-dvn-home`, `wire-peers-home`): re-run each with `PEER_EID` overridden for each new remote chain. The adapter accumulates config per EID — earlier EIDs are not affected.
 
 ---
 
@@ -227,14 +245,18 @@ Run after each wiring step to confirm state before proceeding.
 make verify              # full protocol deployment (RPC_URL)
 make verify-oft-home     # adapter: token, owner, peers, options, rate limit (HOME_RPC)
 make verify-oft-remote   # peer: owner, peers, options, name/symbol (REMOTE_RPC)
-make verify-dvn-home     # print active send DVN + executor config (HOME_RPC)
-make verify-dvn-remote   # print active receive DVN config (REMOTE_RPC)
+make verify-dvn-home     # print A→B send + B→A receive config on home chain (HOME_RPC)
+make verify-dvn-remote   # print A→B receive + B→A send config on remote chain (REMOTE_RPC)
 ```
 
-Run `verify-dvn-home` and `verify-dvn-remote` side-by-side and confirm:
-- `confirmations` match on both sides
-- `requiredDVNCount` and `requiredDVNs` match (same logical DVNs, different chain addresses)
+Run `verify-dvn-home` and `verify-dvn-remote` side-by-side and confirm per direction:
+- `confirmations` match on the send side and its corresponding receive side
+- `requiredDVNCount` and `requiredDVNs` match (same logical DVNs, different chain addresses per direction)
 - `optionalDVNCount` is `255` (NIL — no optional DVNs)
+
+Each `verify-dvn` command prints two sections. Cross-check:
+- Home `A->B send` ↔ Remote `A->B receive` — same DVN set, same confirmations
+- Remote `B->A send` ↔ Home `B->A receive` — same DVN set, same confirmations
 
 A mismatch in any of these will permanently block messages until corrected.
 
@@ -294,10 +316,15 @@ Prints the transaction GUID and a LayerZero Scan link to track delivery.
 ### Additional remote chain (adapter already deployed)
 
 ```
-[ ] Update .env — REMOTE_RPC, PEER_EID, DVN_REMOTE, RECEIVE_LIB
+[ ] Update .env — REMOTE_RPC, PEER_EID, RECEIVE_LIB, REMOTE_SEND_LIB, REMOTE_EXECUTOR, DVN_REMOTE
 [ ] make deploy-peer                → fill PEER
+[ ] make wire-options-home          (PEER_EID overridden for new remote)
 [ ] make wire-options-remote
+[ ] make wire-libs-home             (mainnet only — PEER_EID overridden)
+[ ] make wire-libs-remote           (mainnet only)
+[ ] make wire-dvn-home              (mainnet only — PEER_EID overridden)
 [ ] make wire-dvn-remote            (mainnet only)
+[ ] make verify-dvn-home + verify-dvn-remote — confirm configs match
 [ ] make wire-peers-home            (registers new peer on adapter side)
 [ ] make wire-peers-remote          ← channel live
 [ ] make verify-oft-home + verify-oft-remote
@@ -310,5 +337,5 @@ Prints the transaction GUID and a LayerZero Scan link to track delivery.
 - Private keys are never stored in `.env`. All broadcast scripts use `--interactives 1` — Foundry prompts for the key at runtime.
 - `OFT_OWNER` (multisig) controls peer registration, options, and DVN config. Transfer ownership to the multisig before going to mainnet.
 - `wire-peers-remote` opens the live channel. All security settings must be verified before running it.
-- DVN addresses differ per chain but the logical security set must be identical on send and receive sides.
+- DVN addresses differ per chain but the logical security set must be identical on each matching send/receive side. Both `wire-dvn-home` and `wire-dvn-remote` configure both directions — run both before opening the channel.
 - Rate limit on the adapter (`wire-ratelimit`) is the last line of defense against token drain from the home chain escrow.

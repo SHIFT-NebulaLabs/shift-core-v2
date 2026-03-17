@@ -6,6 +6,11 @@ import {Script, console} from "forge-std/Script.sol";
 import {SyOFTAdapter} from "src/crosschain/SyOFTAdapter.sol";
 import {SySharePeer}  from "src/crosschain/SySharePeer.sol";
 
+// EndpointV2.delegates() is not in ILayerZeroEndpointV2 — use a minimal interface.
+interface IEndpointDelegate {
+    function delegates(address oapp) external view returns (address);
+}
+
 /// @title  VerifyOFT
 /// @notice Read-only scripts. Verify that an OFT pathway is correctly deployed and wired.
 ///         No transactions — safe to run at any time.
@@ -15,12 +20,13 @@ import {SySharePeer}  from "src/crosschain/SySharePeer.sol";
 ///           VerifyOFT_Remote — checks peer on REMOTE chain
 ///
 ///         Required .env:
+///           LZ_ENDPOINT    — LayerZero EndpointV2 address (same on all EVM chains)
 ///           ADAPTER        — SyOFTAdapter address (home chain)
 ///           PEER           — SySharePeer address  (remote EVM chain)
 ///           ADAPTER_EID    — LayerZero endpoint ID of the home chain
 ///           PEER_EID       — LayerZero endpoint ID of the remote chain
 ///           SYSHARE        — expected syShare token (adapter side)
-///           OFT_OWNER      — expected owner on both contracts
+///           OFT_OWNER      — expected owner and delegate on both contracts
 ///
 ///         Optional .env:
 ///           PEER_BYTES32       — raw bytes32 peer address for non-EVM peers
@@ -33,6 +39,7 @@ import {SySharePeer}  from "src/crosschain/SySharePeer.sol";
 
 contract VerifyOFT_Home is Script {
     function run() external view {
+        address endpoint = vm.envAddress("LZ_ENDPOINT");
         address adapter  = vm.envAddress("ADAPTER");
         address peer     = vm.envAddress("PEER");
         uint32  peerEid  = uint32(vm.envUint("PEER_EID"));
@@ -66,6 +73,14 @@ contract VerifyOFT_Home is Script {
         console.log("  rate limit:", uint256(rlLimit));
         console.log("  window (s):", uint256(rlWindow));
 
+        address delegate = IEndpointDelegate(endpoint).delegates(adapter);
+        _check("adapter delegate == OFT_OWNER", delegate == oftOwner);
+        console.log("  delegate  :", delegate);
+
+        uint8 sd = adapterContract.sharedDecimals();
+        console.log("  sharedDecimals:", sd);
+        console.log("  (must match peer sharedDecimals - see verify-oft-remote)");
+
         console.log("======================================");
     }
 
@@ -76,6 +91,7 @@ contract VerifyOFT_Home is Script {
 
 contract VerifyOFT_Remote is Script {
     function run() external view {
+        address endpoint   = vm.envAddress("LZ_ENDPOINT");
         address peer       = vm.envAddress("PEER");
         address adapter    = vm.envAddress("ADAPTER");
         uint32  adapterEid = uint32(vm.envUint("ADAPTER_EID"));
@@ -114,6 +130,14 @@ contract VerifyOFT_Remote is Script {
             _check("peer.symbol() matches",
                 keccak256(bytes(peerContract.symbol())) == keccak256(bytes(expSymbol)));
         }
+
+        address delegate = IEndpointDelegate(endpoint).delegates(peer);
+        _check("peer delegate == OFT_OWNER", delegate == oftOwner);
+        console.log("  delegate  :", delegate);
+
+        uint8 sd = peerContract.sharedDecimals();
+        console.log("  sharedDecimals:", sd);
+        console.log("  (must match adapter sharedDecimals - see verify-oft-home)");
 
         console.log("======================================");
     }

@@ -58,8 +58,8 @@ help:
 	@echo "    make verify              — verify full protocol deployment (set RPC_URL)"
 	@echo "    make verify-oft-home     — verify adapter wiring on home chain"
 	@echo "    make verify-oft-remote   — verify peer wiring on remote chain"
-	@echo "    make verify-dvn-home     — print active send DVN config (home chain)"
-	@echo "    make verify-dvn-remote   — print active receive DVN config (remote chain)"
+	@echo "    make verify-dvn-home     — print A->B send + B->A receive DVN config (home chain)"
+	@echo "    make verify-dvn-remote   — print A->B receive + B->A send DVN config (remote chain)"
 	@echo ""
 	@echo "  Testnet bridge  — set HOME_RPC / REMOTE_RPC in .env"
 	@echo "    make bridge-send         — send syShare home -> remote"
@@ -125,11 +125,11 @@ wire-ratelimit:
 # ─── Library selection (mainnet — optional if using default libs) ──────────────
 
 wire-libs-home:
-	forge script script/helpers/WireOFT_SetLibs.s.sol:WireOFT_SetSendLib \
+	forge script script/helpers/WireOFT_SetLibs.s.sol:WireOFT_SetLibs_Home \
 		--rpc-url $(HOME_RPC) --broadcast --interactives 1
 
 wire-libs-remote:
-	forge script script/helpers/WireOFT_SetLibs.s.sol:WireOFT_SetReceiveLib \
+	forge script script/helpers/WireOFT_SetLibs.s.sol:WireOFT_SetLibs_Remote \
 		--rpc-url $(REMOTE_RPC) --broadcast --interactives 1
 
 # ─── DVN config (mainnet security — run after wire-libs, before wire-peers) ───
