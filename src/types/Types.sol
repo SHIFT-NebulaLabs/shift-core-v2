@@ -75,9 +75,9 @@ struct RedeemCycle {
 }
 
 /// @notice Snapshot of share price data stored per epoch in the ring buffer.
-/// @dev    Used by getSharePriceHistory() and getHWMHistory(). Max 720 epochs (30d).
+/// @dev    Used by getSharePriceHistory() and getHwmHistory(). Max 720 epochs (30d).
 struct SharePriceSnapshot {
-    uint256 sharePrice;  // Share price at this epoch, scaled by SHARE_PRICE_PRECISION.
+    uint256 sharePrice;  // Raw asset units per whole share (e.g. 1e6 for 1 USDC/share, 1e18 for 1 WETH/share).
     uint256 totalSupply; // syShare totalSupply at settlement.
     uint256 timestamp;   // block.timestamp at epochSettle().
 }

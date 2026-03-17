@@ -25,7 +25,7 @@ import {AdminGateway}  from "src/AdminGateway.sol";
 ///           3. Call AdminGateway.execute() with the same parameters.
 ///
 ///         Required .env:
-///           DEPLOYER_PRIVATE_KEY   — private key of the deploying EOA (no admin role needed)
+///           DEPLOYER_ADDRESS       — EOA address used to deploy (must match the --interactive key)
 ///           VAULT_ASSET            — underlying ERC-20 asset address
 ///           VAULT_SHARE_NAME       — e.g. "Shift Yield Share USDC"
 ///           VAULT_SHARE_SYMBOL     — e.g. "syUSDC"
@@ -39,11 +39,10 @@ import {AdminGateway}  from "src/AdminGateway.sol";
 ///           VAULT_OFT              — SyOFTAdapter address, or leave unset for single-chain
 ///
 /// @dev Run:
-///   forge script script/protocol/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify
+///   forge script script/protocol/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify --interactive
 contract DeployVault is Script {
     function run() external {
-        uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address deployer    = vm.addr(deployerKey);
+        address deployer = vm.envAddress("DEPLOYER_ADDRESS");
 
         // ── Pre-compute vault address ─────────────────────────────────────────
         // Deploy order: SyShare (nonce) → LiquidityPool (nonce+1) → SyVault (nonce+2).
@@ -54,7 +53,7 @@ contract DeployVault is Script {
         console.log("Nonce at start :", nonce);
         console.log("Predicted Vault:", predictedVault);
 
-        vm.startBroadcast(deployerKey);
+        vm.startBroadcast();
 
         // 1. SyShare — vault address must be predictedVault.
         SyShare share = new SyShare(

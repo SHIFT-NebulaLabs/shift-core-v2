@@ -17,24 +17,22 @@ import {SySharePeer} from "src/crosschain/SySharePeer.sol";
 ///           4. Set peers LAST (WireOFT.s.sol step = peers).
 ///
 ///         Required .env:
-///           DEPLOYER_PRIVATE_KEY   — private key of the deploying EOA
+///           DEPLOYER_ADDRESS       — EOA address used to deploy (must match the --interactive key)
 ///           VAULT_SHARE_NAME       — token name, must match home chain (e.g. "Shift Yield Share USDC")
 ///           VAULT_SHARE_SYMBOL     — token symbol, must match home chain (e.g. "syUSDC")
 ///           LZ_ENDPOINT            — LayerZero EndpointV2 address on THIS remote chain
 ///           OFT_OWNER              — multisig that controls peer config
 ///
 /// @dev Run (on the remote chain):
-///   forge script script/oft/DeployOFTPeer.s.sol --rpc-url $REMOTE_RPC_URL --broadcast --verify
+///   forge script script/oft/DeployOFTPeer.s.sol --rpc-url $REMOTE_RPC_URL --broadcast --verify --interactive
 contract DeployOFTPeer is Script {
     function run() external {
-        uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-
         string memory name   = vm.envString("VAULT_SHARE_NAME");
         string memory symbol = vm.envString("VAULT_SHARE_SYMBOL");
         address lzEndpoint   = vm.envAddress("LZ_ENDPOINT");
         address oftOwner     = vm.envAddress("OFT_OWNER");
 
-        vm.startBroadcast(deployerKey);
+        vm.startBroadcast();
 
         SySharePeer peer = new SySharePeer(name, symbol, lzEndpoint, oftOwner);
 

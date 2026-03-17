@@ -30,9 +30,7 @@ import {SySharePeer}  from "src/crosschain/SySharePeer.sol";
 ///             is correct: the adapter side wires, the peer side is handled by Cairo tooling.
 ///
 ///         Required .env (all steps):
-///           ADAPTER_OWNER_KEY      — private key of SyOFTAdapter owner (home chain)
-///           PEER_OWNER_KEY         — private key of SySharePeer owner (remote chain)
-///                                    (can be the same value if owner is the same EOA)
+///           (no key in env — pass private key interactively via --interactive when running)
 ///           ADAPTER                — SyOFTAdapter address (home chain)
 ///           PEER                   — SySharePeer address  (remote chain, EVM)
 ///           PEER_BYTES32           — (optional) override: raw bytes32 peer address for non-EVM peers
@@ -44,14 +42,14 @@ import {SySharePeer}  from "src/crosschain/SySharePeer.sol";
 ///           RATE_LIMIT_WINDOW      — window duration in seconds (e.g. 3600 = 1 hour)
 ///
 /// @dev Examples:
-///   # Home chain (adapter side)
-///   forge script script/helpers/WireOFT.s.sol:WireOFT_SetOptions  --rpc-url $HOME_RPC   --broadcast
-///   forge script script/helpers/WireOFT.s.sol:WireOFT_SetPeers    --rpc-url $HOME_RPC   --broadcast
-///   # Remote chain (peer side)
-///   forge script script/helpers/WireOFT.s.sol:WireOFT_SetOptions  --rpc-url $REMOTE_RPC --broadcast
-///   forge script script/helpers/WireOFT.s.sol:WireOFT_SetPeers    --rpc-url $REMOTE_RPC --broadcast
+///   # Home chain (adapter side) — enter adapter owner key when prompted
+///   forge script script/helpers/WireOFT.s.sol:WireOFT_SetOptions  --rpc-url $HOME_RPC   --broadcast --interactive
+///   forge script script/helpers/WireOFT.s.sol:WireOFT_SetPeers    --rpc-url $HOME_RPC   --broadcast --interactive
+///   # Remote chain (peer side) — enter peer owner key when prompted
+///   forge script script/helpers/WireOFT.s.sol:WireOFT_SetOptions  --rpc-url $REMOTE_RPC --broadcast --interactive
+///   forge script script/helpers/WireOFT.s.sol:WireOFT_SetPeers    --rpc-url $REMOTE_RPC --broadcast --interactive
 ///   # Rate limit (home chain only)
-///   forge script script/helpers/WireOFT.s.sol:WireOFT_SetRateLimit --rpc-url $HOME_RPC  --broadcast
+///   forge script script/helpers/WireOFT.s.sol:WireOFT_SetRateLimit --rpc-url $HOME_RPC  --broadcast --interactive
 contract WireOFT_SetOptions is Script {
     using OptionsBuilder for bytes;
 
@@ -70,7 +68,7 @@ contract WireOFT_SetOptions is Script {
 
         // ── Adapter side (home chain) ─────────────────────────────────────────
         if (adapter.code.length > 0) {
-            vm.startBroadcast(vm.envUint("ADAPTER_OWNER_KEY"));
+            vm.startBroadcast();
             EnforcedOptionParam[] memory adapterOpts = new EnforcedOptionParam[](1);
             adapterOpts[0] = EnforcedOptionParam({eid: peerEid, msgType: 1 /* SEND */, options: opts});
             SyOFTAdapter(adapter).setEnforcedOptions(adapterOpts);
@@ -80,7 +78,7 @@ contract WireOFT_SetOptions is Script {
 
         // ── Peer side (remote EVM chain) ──────────────────────────────────────
         if (peer.code.length > 0) {
-            vm.startBroadcast(vm.envUint("PEER_OWNER_KEY"));
+            vm.startBroadcast();
             EnforcedOptionParam[] memory peerOpts = new EnforcedOptionParam[](1);
             peerOpts[0] = EnforcedOptionParam({eid: adapterEid, msgType: 1 /* SEND */, options: opts});
             SySharePeer(peer).setEnforcedOptions(peerOpts);
@@ -113,7 +111,7 @@ contract WireOFT_SetPeers is Script {
 
         // ── Adapter side (home chain) ─────────────────────────────────────────
         if (adapter.code.length > 0) {
-            vm.startBroadcast(vm.envUint("ADAPTER_OWNER_KEY"));
+            vm.startBroadcast();
             SyOFTAdapter(adapter).setPeer(peerEid, peerBytes32);
             vm.stopBroadcast();
             console.log("Adapter peer set for peerEid:", peerEid);
@@ -121,7 +119,7 @@ contract WireOFT_SetPeers is Script {
 
         // ── Peer side (remote EVM chain) ──────────────────────────────────────
         if (peer.code.length > 0) {
-            vm.startBroadcast(vm.envUint("PEER_OWNER_KEY"));
+            vm.startBroadcast();
             SySharePeer(peer).setPeer(adapterEid, adapterBytes32);
             vm.stopBroadcast();
             console.log("Peer peer set for adapterEid:", adapterEid);
@@ -141,7 +139,7 @@ contract WireOFT_SetRateLimit is Script {
         uint192 limitAmt = uint192(vm.envUint("RATE_LIMIT_AMOUNT"));
         uint64  window   = uint64(vm.envUint("RATE_LIMIT_WINDOW"));
 
-        vm.startBroadcast(vm.envUint("ADAPTER_OWNER_KEY"));
+        vm.startBroadcast();
 
         RateLimiter.RateLimitConfig[] memory cfg = new RateLimiter.RateLimitConfig[](1);
         cfg[0] = RateLimiter.RateLimitConfig({dstEid: peerEid, limit: limitAmt, window: window});

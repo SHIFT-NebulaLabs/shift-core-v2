@@ -103,12 +103,12 @@ interface ISyVault {
     /// @notice Emitted every epochSettle() — always, even with feeSharesMinted = 0.
     /// @param  epoch           Epoch number.
     /// @param  sharePrice      Share price after fee.
-    /// @param  previousHWM     High water mark before this epoch.
-    /// @param  feeSharesMinted Shares minted to feeRecipient (0 if sharePrice <= HWM or fee = 0).
+    /// @param  previousHwm     High water mark before this epoch.
+    /// @param  feeSharesMinted Shares minted to feeRecipient (0 if sharePrice <= Hwm or fee = 0).
     event PerformanceFeeCollected(
         uint256 epoch,
         uint256 sharePrice,
-        uint256 previousHWM,
+        uint256 previousHwm,
         uint256 feeSharesMinted
     );
 
@@ -505,7 +505,8 @@ interface ISyVault {
         view
         returns (SharePriceSnapshot[] memory);
 
-    /// @notice Current High Water Mark, scaled by SHARE_PRICE_PRECISION.
+    /// @notice Current High Water Mark. Same units as latestSharePrice() —
+    ///         raw asset units per whole share. Updated upward only on performance fee collection.
     function latestHwm() external view returns (uint256);
 
     /// @notice HWM values over an epoch range. Same 720-epoch ring buffer.

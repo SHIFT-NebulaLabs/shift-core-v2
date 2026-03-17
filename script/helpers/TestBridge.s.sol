@@ -20,7 +20,7 @@ import {SySharePeer}     from "src/crosschain/SySharePeer.sol";
 ///         After sending, check delivery at https://layerzeroscan.com using the printed GUID.
 ///
 ///         Required .env (both scripts):
-///           DEPLOYER_PRIVATE_KEY   — sender EOA (must hold syShare on source chain)
+///           DEPLOYER_ADDRESS       — sender EOA (must hold syShare on source chain; must match --interactive key)
 ///           ADAPTER                — SyOFTAdapter address (home chain)
 ///           PEER                   — SySharePeer address  (remote chain)
 ///           ADAPTER_EID            — LayerZero endpoint ID of the home chain
@@ -34,9 +34,9 @@ import {SySharePeer}     from "src/crosschain/SySharePeer.sol";
 ///
 /// @dev Run:
 ///   # Home -> Remote
-///   forge script script/helpers/TestBridge.s.sol:TestBridge_Send --rpc-url $HOME_RPC --broadcast
+///   forge script script/helpers/TestBridge.s.sol:TestBridge_Send --rpc-url $HOME_RPC --broadcast --interactive
 ///   # Remote -> Home
-///   forge script script/helpers/TestBridge.s.sol:TestBridge_Return --rpc-url $REMOTE_RPC --broadcast
+///   forge script script/helpers/TestBridge.s.sol:TestBridge_Return --rpc-url $REMOTE_RPC --broadcast --interactive
 
 // ─── Home -> Remote (adapter locks, peer mints) ──────────────────────────────
 
@@ -44,9 +44,7 @@ contract TestBridge_Send is Script {
     using OptionsBuilder for bytes;
 
     function run() external {
-        uint256 senderKey  = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address sender     = vm.addr(senderKey);
-
+        address sender      = vm.envAddress("DEPLOYER_ADDRESS");
         address adapterAddr = vm.envAddress("ADAPTER");
         uint32  peerEid     = uint32(vm.envUint("PEER_EID"));
         address syShare     = vm.envAddress("SYSHARE");
@@ -89,7 +87,7 @@ contract TestBridge_Send is Script {
         require(sender.balance >= fee.nativeFee, "TestBridge: insufficient ETH for LZ fee");
         require(IERC20(syShare).balanceOf(sender) >= amount, "TestBridge: insufficient syShare balance");
 
-        vm.startBroadcast(senderKey);
+        vm.startBroadcast();
 
         // Approve adapter to pull syShare.
         IERC20(syShare).approve(adapterAddr, amount);
@@ -117,10 +115,8 @@ contract TestBridge_Return is Script {
     using OptionsBuilder for bytes;
 
     function run() external {
-        uint256 senderKey  = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address sender     = vm.addr(senderKey);
-
-        address peerAddr    = vm.envAddress("PEER");
+        address sender   = vm.envAddress("DEPLOYER_ADDRESS");
+        address peerAddr = vm.envAddress("PEER");
         uint32  adapterEid  = uint32(vm.envUint("ADAPTER_EID"));
         uint256 amount      = vm.envUint("BRIDGE_AMOUNT");
 
@@ -161,7 +157,7 @@ contract TestBridge_Return is Script {
         require(sender.balance >= fee.nativeFee, "TestBridge: insufficient ETH for LZ fee");
         require(IERC20(peerAddr).balanceOf(sender) >= amount, "TestBridge: insufficient peer token balance");
 
-        vm.startBroadcast(senderKey);
+        vm.startBroadcast();
 
         // OFT peer burns directly — no approval needed.
         (MessagingReceipt memory msgReceipt, OFTReceipt memory oftReceipt) =

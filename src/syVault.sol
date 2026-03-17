@@ -517,7 +517,8 @@ contract SyVault is SyVaultRedeem {
         if (s_pausedFull || s_pausedDeposits) return DepositRequestStatus.Paused;
         if (s_depositWhitelistEnabled && !s_depositWhitelist[_controller]) return DepositRequestStatus.NotWhitelisted;
         if (s_maxStalePriceEpochs > 0) {
-            uint256 stale = currentEpoch() > s_nextEpochToSettle ? currentEpoch() - s_nextEpochToSettle : 0;
+            uint256 current = currentEpoch();
+            uint256 stale   = current > s_nextEpochToSettle ? current - s_nextEpochToSettle : 0;
             if (stale >= s_maxStalePriceEpochs) return DepositRequestStatus.StalePrice;
         }
         if (s_maxTVL > 0) {

@@ -20,7 +20,7 @@ import {
 
 /// @title  SyVaultEpoch
 /// @author Shift Protocol
-/// @notice Epoch settlement, share price tracking, HWM, and performance/maintenance fee logic.
+/// @notice Epoch settlement, share price tracking, Hwm, and performance/maintenance fee logic.
 abstract contract SyVaultEpoch is SyVaultBase {
 
     /*//////////////////////////////////////////////////////////////
@@ -34,7 +34,7 @@ abstract contract SyVaultEpoch is SyVaultBase {
     /// @dev Ring buffer: epoch % MAX_HISTORY_RANGE → SharePriceSnapshot.
     SharePriceSnapshot[720] internal s_sharePriceHistory;
 
-    /// @dev Ring buffer: epoch % MAX_HISTORY_RANGE → HWM value.
+    /// @dev Ring buffer: epoch % MAX_HISTORY_RANGE → Hwm value.
     uint256[720] internal s_hwmHistory;
 
     /// @dev Next epoch the Keeper must settle. stalePriceEpochs = currentEpoch() - s_nextEpochToSettle.
@@ -56,10 +56,13 @@ abstract contract SyVaultEpoch is SyVaultBase {
     /// @dev    Keeper can call with any price. AdminGateway can call with 0 only (GUARDIAN/ADMIN emergency).
     ///         Skips price update if allocatorActive = true (uses previous price).
     ///         After ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS consecutive skips, proceeds with proposed price.
-    ///         Collects performance fee (mints shares if sharePrice > HWM).
+    ///         Collects performance fee (mints shares if sharePrice > Hwm).
     ///         Collects maintenance fee every feeCollectionInterval epochs (deducts from TVL).
     ///         Emits SharePriceUpdated, PerformanceFeeCollected, and conditionally MaintenanceFeeCollected.
-    /// @param  _sharePrice Proposed share price, scaled by SHARE_PRICE_PRECISION. 0 = use previous.
+    /// @param  _sharePrice Proposed share price in raw asset units per whole share. For a 6-decimal
+    ///                     asset (e.g. USDC): 1 token/share = 1e6. For an 18-decimal asset (e.g. WETH):
+    ///                     1 token/share = 1e18. Keeper formula: (TVL_raw * SHARE_PRICE_PRECISION) /
+    ///                     effectiveSupply(). Pass 0 to reuse the previous price (emergency/AdminGateway).
     function epochSettle(uint256 _sharePrice) external {
         // Keeper can call with any price. AdminGateway (GUARDIAN/ADMIN route) can call with 0 only.
         if (msg.sender != s_keeper) {
@@ -116,15 +119,16 @@ abstract contract SyVaultEpoch is SyVaultBase {
     /// @dev Applies maintenance fee (share price deduction) and performance fee (share dilution).
     ///      Returns the price after maintenance deduction (performance fee does not change price).
     function _collectFees(uint256 _epoch, uint256 _price) internal returns (uint256) {
+        uint256 supply = i_share.totalSupply();
+
         // ── Performance fee ────────────────────────────────────────────────────────────────
         // Evaluated against the gross reported price before maintenance deduction, so the
-        // HWM comparison is never affected by operational costs.
+        // Hwm comparison is never affected by operational costs.
         uint256 hwm            = s_hwm;
         uint256 feeSharesMinted;
         if (_price > hwm && s_performanceFeeBps > 0) {
-            uint256 supply = i_share.totalSupply();
             if (supply > 0) {
-                // Dilution model: feeShares = (price − HWM) × supply × feeBps / (price × BASIS_POINTS)
+                // Dilution model: feeShares = (price - Hwm) * supply * feeBps / (price * BASIS_POINTS)
                 feeSharesMinted = ((_price - hwm) * supply * s_performanceFeeBps)
                     / (_price * BASIS_POINTS);
                 if (feeSharesMinted > 0) i_share.mint(s_feeRecipient, feeSharesMinted);
@@ -144,7 +148,7 @@ abstract contract SyVaultEpoch is SyVaultBase {
 
             emit MaintenanceFeeCollected(
                 _epoch,
-                (feeDeduction * i_share.totalSupply()) / SHARE_PRICE_PRECISION,
+                (feeDeduction * supply) / SHARE_PRICE_PRECISION,
                 priceBefore,
                 _price
             );
@@ -175,7 +179,9 @@ abstract contract SyVaultEpoch is SyVaultBase {
                             PUBLIC VIEW
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Latest share price, scaled by SHARE_PRICE_PRECISION.
+    /// @notice Latest settled share price in raw asset units per whole share.
+    ///         For a 6-decimal asset (e.g. USDC): 1 token/share = 1e6.
+    ///         For an 18-decimal asset (e.g. WETH): 1 token/share = 1e18.
     function latestSharePrice() external view returns (uint256) {
         return s_sharePrice;
     }
@@ -217,7 +223,8 @@ abstract contract SyVaultEpoch is SyVaultBase {
         }
     }
 
-    /// @notice Current High Water Mark, scaled by SHARE_PRICE_PRECISION.
+    /// @notice Current High Water Mark. Same units as latestSharePrice() —
+    ///         raw asset units per whole share. Updated upward only on each performance fee collection.
     function latestHwm() external view returns (uint256) {
         return s_hwm;
     }

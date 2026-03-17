@@ -50,16 +50,6 @@ uint256 constant EPOCHS_PER_YEAR = 8_760;
 uint256 constant SHARE_PRICE_PRECISION = 1e18;
 
 /*//////////////////////////////////////////////////////////////
-                     ADDRESS REGISTRY KEYS
-//////////////////////////////////////////////////////////////*/
-
-// bytes32 key for the Hub singleton in AddressRegistry.
-bytes32 constant CONTRACT_HUB = keccak256("Hub");
-
-// bytes32 key for the AdminGateway singleton in AddressRegistry.
-bytes32 constant CONTRACT_ADMIN_GATEWAY = keccak256("AdminGateway");
-
-/*//////////////////////////////////////////////////////////////
                             ROLES
 //////////////////////////////////////////////////////////////*/
 
@@ -68,9 +58,3 @@ bytes32 constant ADMIN_ROLE = keccak256("ADMIN");
 
 // GUARDIAN role — immediate pause only. No config, no fund access.
 bytes32 constant GUARDIAN_ROLE = keccak256("GUARDIAN");
-
-// KEEPER role — epochSettle() per vault.
-bytes32 constant KEEPER_ROLE = keccak256("KEEPER");
-
-// ALLOCATOR role — deployCapital() / returnCapital() / settleRedeemBatch() per vault.
-bytes32 constant ALLOCATOR_ROLE = keccak256("ALLOCATOR");

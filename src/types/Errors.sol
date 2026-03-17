@@ -21,9 +21,6 @@ error SyVault__NotAllocator();
 /// @notice Thrown when caller is not authorized for the requested action.
 error SyVault__NotAuthorized();
 
-/// @notice Thrown when the vault is fully paused.
-error SyVault__Paused();
-
 /// @notice Thrown when deposits are paused.
 error SyVault__DepositsPaused();
 
@@ -38,9 +35,6 @@ error SyVault__BelowMinDeposit();
 
 /// @notice Thrown when caller is not on the deposit whitelist.
 error SyVault__NotWhitelisted();
-
-/// @notice Thrown when vault state does not permit the requested operation.
-error SyVault__InvalidVaultState();
 
 /// @notice Thrown when requestFastRedeem() is called after cutoff but the current fast cycle is not yet settled.
 error SyVault__FastCycleNotSettled();
@@ -65,12 +59,6 @@ error SyVault__NoPendingRequest();
 
 /// @notice Thrown when the proposed share price deviates more than maxSharePriceDelta from the previous.
 error SyVault__SharePriceDeltaExceeded();
-
-/// @notice Thrown when a zero share price is proposed outside of the emergency fallback path.
-error SyVault__InvalidSharePrice();
-
-/// @notice Thrown when the controller is not the owner and no operator approval exists.
-error SyVault__NotOwnerOrOperator();
 
 /// @notice Thrown when owner is not msg.sender and no operator is set.
 error SyVault__InvalidOwner();
@@ -141,9 +129,6 @@ error AddressRegistry__NotAuthorized();
 
 /// @notice Thrown when a zero address is passed for a required contract slot.
 error AddressRegistry__ZeroAddress();
-
-/// @notice Thrown when a vault with the given id is already registered.
-error AddressRegistry__VaultAlreadyRegistered();
 
 /// @notice Thrown when the requested vaultId does not exist.
 error AddressRegistry__VaultNotFound();

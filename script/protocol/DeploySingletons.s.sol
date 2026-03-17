@@ -27,21 +27,20 @@ import {ADMIN_ROLE, GUARDIAN_ROLE} from "src/types/Constants.sol";
 ///           2. grantRole(GUARDIAN_ROLE, guardian) — unlocks emergency pause
 ///
 ///         Required .env:
-///           DEPLOYER_PRIVATE_KEY   — private key of the deploying EOA (no admin role needed)
+///           DEPLOYER_ADDRESS       — EOA address used to deploy (must match the --interactive key)
 ///           MULTISIG               — Safe address that receives ADMIN_ROLE + DEFAULT_ADMIN_ROLE
 ///           GUARDIAN               — address that receives GUARDIAN_ROLE (can be same as MULTISIG)
 ///           TIMELOCK_DELAY         — minimum delay in seconds (e.g. 172800 = 2 days)
 ///
 /// @dev Run:
-///   forge script script/protocol/DeploySingletons.s.sol --rpc-url $RPC_URL --broadcast --verify
+///   forge script script/protocol/DeploySingletons.s.sol --rpc-url $RPC_URL --broadcast --verify --interactive
 contract DeploySingletons is Script {
     // Fixed CREATE2 salts — same value on every chain = same address.
     bytes32 constant REGISTRY_SALT = keccak256("shift.protocol.AddressRegistry.v1");
     bytes32 constant HUB_SALT      = keccak256("shift.protocol.Hub.v1");
 
     function run() external {
-        uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address deployer    = vm.addr(deployerKey);
+        address deployer = vm.envAddress("DEPLOYER_ADDRESS");
 
         address multisig      = vm.envAddress("MULTISIG");
         address guardian      = vm.envAddress("GUARDIAN");
@@ -60,7 +59,7 @@ contract DeploySingletons is Script {
         console.log("Nonce at start  :", deployerNonce);
         console.log("Predicted AdminGateway:", predictedGateway);
 
-        vm.startBroadcast(deployerKey);
+        vm.startBroadcast();
 
         // 1. AddressRegistry — CREATE2, references predicted AdminGateway.
         AddressRegistry registry = new AddressRegistry{salt: REGISTRY_SALT}(predictedGateway);

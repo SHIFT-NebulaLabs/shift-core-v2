@@ -19,22 +19,20 @@ import {SyOFTAdapter} from "src/crosschain/SyOFTAdapter.sol";
 ///           4. Set peers LAST (WireOFT.s.sol step = peers) — this opens the channel.
 ///
 ///         Required .env:
-///           DEPLOYER_PRIVATE_KEY   — private key of the deploying EOA
+///           DEPLOYER_ADDRESS       — EOA address used to deploy (must match the --interactive key)
 ///           SYSHARE                — SyShare ERC-20 address on this (home) chain
 ///           LZ_ENDPOINT            — LayerZero EndpointV2 address on this chain
 ///           OFT_OWNER              — multisig that controls peer config and rate limits
 ///
 /// @dev Run:
-///   forge script script/oft/DeployOFTAdapter.s.sol --rpc-url $RPC_URL --broadcast --verify
+///   forge script script/oft/DeployOFTAdapter.s.sol --rpc-url $RPC_URL --broadcast --verify --interactive
 contract DeployOFTAdapter is Script {
     function run() external {
-        uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-
         address syShare    = vm.envAddress("SYSHARE");
         address lzEndpoint = vm.envAddress("LZ_ENDPOINT");
         address oftOwner   = vm.envAddress("OFT_OWNER");
 
-        vm.startBroadcast(deployerKey);
+        vm.startBroadcast();
 
         SyOFTAdapter adapter = new SyOFTAdapter(syShare, lzEndpoint, oftOwner);
 
