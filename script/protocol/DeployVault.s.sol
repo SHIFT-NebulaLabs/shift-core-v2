@@ -25,7 +25,7 @@ import {AdminGateway}  from "src/AdminGateway.sol";
 ///           3. Call AdminGateway.execute() with the same parameters.
 ///
 ///         Required .env:
-///           DEPLOYER_ADDRESS       — EOA address used to deploy (must match the --interactive key)
+///           DEPLOYER_ADDRESS       — EOA address used to deploy (must match the --interactives 1 key)
 ///           VAULT_ASSET            — underlying ERC-20 asset address
 ///           VAULT_SHARE_NAME       — e.g. "Shift Yield Share USDC"
 ///           VAULT_SHARE_SYMBOL     — e.g. "syUSDC"
@@ -39,7 +39,7 @@ import {AdminGateway}  from "src/AdminGateway.sol";
 ///           VAULT_OFT              — SyOFTAdapter address, or leave unset for single-chain
 ///
 /// @dev Run:
-///   forge script script/protocol/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify --interactive
+///   forge script script/protocol/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify --interactives 1
 contract DeployVault is Script {
     function run() external {
         address deployer = vm.envAddress("DEPLOYER_ADDRESS");

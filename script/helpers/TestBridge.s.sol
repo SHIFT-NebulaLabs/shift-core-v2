@@ -20,7 +20,7 @@ import {SySharePeer}     from "src/crosschain/SySharePeer.sol";
 ///         After sending, check delivery at https://layerzeroscan.com using the printed GUID.
 ///
 ///         Required .env (both scripts):
-///           DEPLOYER_ADDRESS       — sender EOA (must hold syShare on source chain; must match --interactive key)
+///           DEPLOYER_ADDRESS       — sender EOA (must hold syShare on source chain; must match --interactives 1 key)
 ///           ADAPTER                — SyOFTAdapter address (home chain)
 ///           PEER                   — SySharePeer address  (remote chain)
 ///           ADAPTER_EID            — LayerZero endpoint ID of the home chain
@@ -34,9 +34,9 @@ import {SySharePeer}     from "src/crosschain/SySharePeer.sol";
 ///
 /// @dev Run:
 ///   # Home -> Remote
-///   forge script script/helpers/TestBridge.s.sol:TestBridge_Send --rpc-url $HOME_RPC --broadcast --interactive
+///   forge script script/helpers/TestBridge.s.sol:TestBridge_Send --rpc-url $HOME_RPC --broadcast --interactives 1
 ///   # Remote -> Home
-///   forge script script/helpers/TestBridge.s.sol:TestBridge_Return --rpc-url $REMOTE_RPC --broadcast --interactive
+///   forge script script/helpers/TestBridge.s.sol:TestBridge_Return --rpc-url $REMOTE_RPC --broadcast --interactives 1
 
 // ─── Home -> Remote (adapter locks, peer mints) ──────────────────────────────
 

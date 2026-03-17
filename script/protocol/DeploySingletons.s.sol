@@ -27,13 +27,13 @@ import {ADMIN_ROLE, GUARDIAN_ROLE} from "src/types/Constants.sol";
 ///           2. grantRole(GUARDIAN_ROLE, guardian) — unlocks emergency pause
 ///
 ///         Required .env:
-///           DEPLOYER_ADDRESS       — EOA address used to deploy (must match the --interactive key)
+///           DEPLOYER_ADDRESS       — EOA address used to deploy (must match the --interactives 1 key)
 ///           MULTISIG               — Safe address that receives ADMIN_ROLE + DEFAULT_ADMIN_ROLE
 ///           GUARDIAN               — address that receives GUARDIAN_ROLE (can be same as MULTISIG)
 ///           TIMELOCK_DELAY         — minimum delay in seconds (e.g. 172800 = 2 days)
 ///
 /// @dev Run:
-///   forge script script/protocol/DeploySingletons.s.sol --rpc-url $RPC_URL --broadcast --verify --interactive
+///   forge script script/protocol/DeploySingletons.s.sol --rpc-url $RPC_URL --broadcast --verify --interactives 1
 contract DeploySingletons is Script {
     // Fixed CREATE2 salts — same value on every chain = same address.
     bytes32 constant REGISTRY_SALT = keccak256("shift.protocol.AddressRegistry.v1");
