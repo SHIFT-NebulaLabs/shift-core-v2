@@ -6,6 +6,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {SyShare}       from "src/SyShare.sol";
 import {LiquidityPool} from "src/LiquidityPool.sol";
 import {SyVault}       from "src/SyVault.sol";
+import {AdminGateway}  from "src/AdminGateway.sol";
 
 /// @title  DeployVault
 /// @notice Deploys one vault cluster: SyShare + LiquidityPool + SyVault.
@@ -18,9 +19,10 @@ import {SyVault}       from "src/SyVault.sol";
 ///         This is intentional — DeBanks and block explorers must not conflate syUSDC on Base
 ///         with syUSDT on Arbitrum.
 ///
-///         After deployment, register the vault by running:
-///           forge script script/helpers/TimelockHelper.s.sol:TimelockHelper_ScheduleRegisterVault
-///         (requires ADMIN_PRIVATE_KEY holding PROPOSER_ROLE on AdminGateway)
+///         After deployment, register the vault via the Safe Transaction Builder:
+///           1. Call AdminGateway.schedule() to queue registerVault (see console output for calldata).
+///           2. Wait for TIMELOCK_DELAY seconds.
+///           3. Call AdminGateway.execute() with the same parameters.
 ///
 ///         Required .env:
 ///           DEPLOYER_PRIVATE_KEY   — private key of the deploying EOA (no admin role needed)
@@ -87,14 +89,45 @@ contract DeployVault is Script {
         console.log("LiquidityPool  :", address(pool));
         console.log("SyVault        :", address(vault));
         console.log("");
-        console.log("Next: register the vault via timelock.");
-        console.log("Set in .env: SYVAULT / LIQUIDITY_POOL / SYSHARE / VAULT_OFT");
-        console.log("Then run:");
-        console.log("  forge script script/helpers/TimelockHelper.s.sol:TimelockHelper_ScheduleRegisterVault");
-        console.log("");
         console.log("Add to .env:");
         console.log("SYSHARE=", address(share));
         console.log("LIQUIDITY_POOL=", address(pool));
         console.log("SYVAULT=", address(vault));
+        console.log("");
+
+        // ── Print Safe Transaction Builder calldata for registerVault ─────────
+        // Registration requires two Safe transactions via TimelockController:
+        //   TX 1: schedule() — queues the operation (wait TIMELOCK_DELAY seconds after this).
+        //   TX 2: execute()  — executes the operation after the delay.
+        //
+        // Both transactions target AdminGateway (it calls itself).
+        // Use the same target/data/predecessor/salt in both calls.
+        address adminGateway = vm.envAddress("ADMIN_GATEWAY");
+        address syOft        = vm.envOr("VAULT_OFT", address(0));
+        uint256 delay        = AdminGateway(payable(adminGateway)).getMinDelay();
+        bytes32 salt         = keccak256(abi.encode("registerVault", address(vault), block.timestamp));
+
+        bytes memory innerData = abi.encodeCall(
+            AdminGateway.registerVault,
+            (address(vault), address(pool), address(share), syOft)
+        );
+        bytes memory scheduleData = abi.encodeCall(
+            AdminGateway(payable(adminGateway)).schedule,
+            (adminGateway, 0, innerData, bytes32(0), salt, delay)
+        );
+        bytes memory executeData = abi.encodeCall(
+            AdminGateway(payable(adminGateway)).execute,
+            (adminGateway, 0, innerData, bytes32(0), salt)
+        );
+
+        console.log("=== POST-DEPLOY: REGISTER VAULT VIA SAFE ===");
+        console.log("TX 1 (now) - schedule registerVault:");
+        console.log("  To  :", adminGateway);
+        console.log("  Data:", vm.toString(scheduleData));
+        console.log("");
+        console.log("TX 2 (after", delay, "seconds) - execute registerVault:");
+        console.log("  To  :", adminGateway);
+        console.log("  Data:", vm.toString(executeData));
+        console.log("  Salt:", vm.toString(salt));
     }
 }

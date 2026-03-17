@@ -18,8 +18,8 @@ import {SySharePeer} from "src/crosschain/SySharePeer.sol";
 ///
 ///         Required .env:
 ///           DEPLOYER_PRIVATE_KEY   — private key of the deploying EOA
-///           SYSHARE_NAME           — token name, must match home chain (e.g. "Shift Yield Share USDC")
-///           SYSHARE_SYMBOL         — token symbol, must match home chain (e.g. "syUSDC")
+///           VAULT_SHARE_NAME       — token name, must match home chain (e.g. "Shift Yield Share USDC")
+///           VAULT_SHARE_SYMBOL     — token symbol, must match home chain (e.g. "syUSDC")
 ///           LZ_ENDPOINT            — LayerZero EndpointV2 address on THIS remote chain
 ///           OFT_OWNER              — multisig that controls peer config
 ///
@@ -29,8 +29,8 @@ contract DeployOFTPeer is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
-        string memory name   = vm.envString("SYSHARE_NAME");
-        string memory symbol = vm.envString("SYSHARE_SYMBOL");
+        string memory name   = vm.envString("VAULT_SHARE_NAME");
+        string memory symbol = vm.envString("VAULT_SHARE_SYMBOL");
         address lzEndpoint   = vm.envAddress("LZ_ENDPOINT");
         address oftOwner     = vm.envAddress("OFT_OWNER");
 
