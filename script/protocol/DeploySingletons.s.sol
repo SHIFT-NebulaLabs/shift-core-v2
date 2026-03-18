@@ -51,9 +51,10 @@ contract DeploySingletons is Script {
         // Compute nonce BEFORE vm.startBroadcast so it reflects the current on-chain nonce.
         uint64 deployerNonce = vm.getNonce(deployer);
 
-        // CREATE2 deploys don't advance the deployer nonce.
-        // AdminGateway will be the FIRST regular (CREATE) deploy → nonce = deployerNonce.
-        address predictedGateway = vm.computeCreateAddress(deployer, deployerNonce);
+        // In Foundry broadcast, CREATE2 deploys are sent as transactions from the deployer
+        // and DO advance the nonce. AddressRegistry (CREATE2) takes deployerNonce,
+        // so AdminGateway (regular CREATE) lands at deployerNonce + 1.
+        address predictedGateway = vm.computeCreateAddress(deployer, deployerNonce + 1);
 
         console.log("Deployer        :", deployer);
         console.log("Nonce at start  :", deployerNonce);
