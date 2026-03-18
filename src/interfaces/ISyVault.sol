@@ -480,8 +480,16 @@ interface ISyVault {
     /// @param  cycleId  Cycle identifier.
     function redeemCycleSchedule(uint256 cycleId) external view returns (RedeemCycle memory);
 
-    /// @notice Latest share price, scaled by SHARE_PRICE_PRECISION.
+    /// @notice Latest share price in raw asset units per whole share.
+    ///         Precision = asset decimals. Use sharePriceDecimals() to interpret.
+    ///         e.g. USDC vault: 1.05 USDC/share = 1_050_000 (6 decimals).
     function latestSharePrice() external view returns (uint256);
+
+    /// @notice Decimals used by sharePrice, HWM, and TVL values.
+    ///         Equal to the underlying asset's decimals (e.g. 6 for USDC, 18 for WETH).
+    ///         Equivalent to IERC20Metadata(asset()).decimals() — exposed here for
+    ///         integrators who read vault values without separately querying the asset.
+    function sharePriceDecimals() external view returns (uint8);
 
     /// @notice Full performance snapshot — epoch, prices, supply, timestamp, HWM.
     /// @dev    Use for real-time APY display without an indexer.

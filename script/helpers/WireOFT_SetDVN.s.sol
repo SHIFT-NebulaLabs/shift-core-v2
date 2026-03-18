@@ -21,18 +21,18 @@ uint8  constant NIL_DVN_THRESHOLD = 0;
 uint32 constant CONFIG_TYPE_EXECUTOR = 1;
 uint32 constant CONFIG_TYPE_ULN      = 2;
 
-/// @title  WireOFT_DVN
+/// @title  WireOFT_SetDVN
 /// @notice Configures DVN + Executor security for BOTH directions of the OFT channel.
 ///
 ///         Each contract handles ONE chain and sets config for BOTH directions:
 ///
 ///           WireOFT_SetDVN_Home (run on HOME chain):
-///             setConfig sendLib    → Executor + ULN send config   (A -> B)
-///             setConfig receiveLib → ULN receive config            (B -> A)
+///             setConfig sendLib    -> Executor + ULN send config   (A -> B)
+///             setConfig receiveLib -> ULN receive config            (B -> A)
 ///
 ///           WireOFT_SetDVN_Remote (run on REMOTE chain):
-///             setConfig receiveLib → ULN receive config            (A -> B)
-///             setConfig sendLib    → Executor + ULN send config    (B -> A)
+///             setConfig receiveLib -> ULN receive config            (A -> B)
+///             setConfig sendLib    -> Executor + ULN send config    (B -> A)
 ///
 ///         Both sides MUST use the same DVN set and block confirmations per direction
 ///         or messages will be permanently blocked.
@@ -62,12 +62,11 @@ uint32 constant CONFIG_TYPE_ULN      = 2;
 ///           BLOCK_CONFIRMATIONS — min source block confirmations before DVNs verify
 ///
 ///         Find lib, executor, and DVN addresses at:
-///           https://docs.layerzero.network/v2/deployments/chains/arbitrum-sepolia
-///           https://docs.layerzero.network/v2/deployments/chains/base-sepolia
+///           https://docs.layerzero.network/v2/deployments/chains
 ///
-/// @dev Run:
-///   forge script script/helpers/WireOFT_DVN.s.sol:WireOFT_SetDVN_Home   --rpc-url $HOME_RPC   --broadcast --interactives 1
-///   forge script script/helpers/WireOFT_DVN.s.sol:WireOFT_SetDVN_Remote --rpc-url $REMOTE_RPC --broadcast --interactives 1
+/// @dev Run order: options -> ratelimit -> libs -> dvn -> peers (peers LAST)
+///   forge script script/helpers/WireOFT_SetDVN.s.sol:WireOFT_SetDVN_Home   --rpc-url $HOME_RPC   --broadcast --interactives 1
+///   forge script script/helpers/WireOFT_SetDVN.s.sol:WireOFT_SetDVN_Remote --rpc-url $REMOTE_RPC --broadcast --interactives 1
 
 // ─── Shared helper ────────────────────────────────────────────────────────────
 
@@ -82,7 +81,7 @@ library DVNHelper {
         if (count == 2) {
             require(
                 uint160(dvn1) < uint160(dvn2),
-                "WireOFT_DVN: DVN must be sorted ascending (lower address first)"
+                "WireOFT_SetDVN: DVN addresses must be sorted ascending (lower address first)"
             );
             dvns[1] = dvn2;
         }

@@ -5,7 +5,8 @@ import {SyVaultRedeem} from "src/abstracts/SyVaultRedeem.sol";
 import {SyVaultBase}   from "src/abstracts/SyVaultBase.sol";
 import {ISyVault}      from "src/interfaces/ISyVault.sol";
 import {ILiquidityPool} from "src/interfaces/ILiquidityPool.sol";
-import {IERC20}        from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20}         from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20}     from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC7540Deposit, IERC7540Redeem} from "src/interfaces/IERC7540.sol";
 import {
@@ -562,6 +563,11 @@ contract SyVault is SyVaultRedeem {
     /// @inheritdoc ISyVault
     function asset() external view returns (address) {
         return address(i_asset);
+    }
+
+    /// @inheritdoc ISyVault
+    function sharePriceDecimals() external view returns (uint8) {
+        return IERC20Metadata(address(i_asset)).decimals();
     }
 
     /*//////////////////////////////////////////////////////////////

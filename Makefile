@@ -111,15 +111,15 @@ deploy-peer:
 # Correct order: options → ratelimit → libs → dvn → peers (peers LAST — opens channel).
 
 wire-options-home:
-	forge script script/helpers/WireOFT.s.sol:WireOFT_SetOptions_Home \
+	forge script script/helpers/WireOFT_SetOptions.s.sol:WireOFT_SetOptions_Home \
 		--rpc-url $(HOME_RPC) --broadcast --interactives 1
 
 wire-options-remote:
-	forge script script/helpers/WireOFT.s.sol:WireOFT_SetOptions_Remote \
+	forge script script/helpers/WireOFT_SetOptions.s.sol:WireOFT_SetOptions_Remote \
 		--rpc-url $(REMOTE_RPC) --broadcast --interactives 1
 
 wire-ratelimit:
-	forge script script/helpers/WireOFT.s.sol:WireOFT_SetRateLimit \
+	forge script script/helpers/WireOFT_SetRateLimit.s.sol:WireOFT_SetRateLimit \
 		--rpc-url $(HOME_RPC) --broadcast --interactives 1
 
 # ─── Library selection (mainnet — optional if using default libs) ──────────────
@@ -135,21 +135,21 @@ wire-libs-remote:
 # ─── DVN config (mainnet security — run after wire-libs, before wire-peers) ───
 
 wire-dvn-home:
-	forge script script/helpers/WireOFT_DVN.s.sol:WireOFT_SetDVN_Home \
+	forge script script/helpers/WireOFT_SetDVN.s.sol:WireOFT_SetDVN_Home \
 		--rpc-url $(HOME_RPC) --broadcast --interactives 1
 
 wire-dvn-remote:
-	forge script script/helpers/WireOFT_DVN.s.sol:WireOFT_SetDVN_Remote \
+	forge script script/helpers/WireOFT_SetDVN.s.sol:WireOFT_SetDVN_Remote \
 		--rpc-url $(REMOTE_RPC) --broadcast --interactives 1
 
 # ─── Peers (opens the live channel — always last) ─────────────────────────────
 
 wire-peers-home:
-	forge script script/helpers/WireOFT.s.sol:WireOFT_SetPeers_Home \
+	forge script script/helpers/WireOFT_SetPeers.s.sol:WireOFT_SetPeers_Home \
 		--rpc-url $(HOME_RPC) --broadcast --interactives 1
 
 wire-peers-remote:
-	forge script script/helpers/WireOFT.s.sol:WireOFT_SetPeers_Remote \
+	forge script script/helpers/WireOFT_SetPeers.s.sol:WireOFT_SetPeers_Remote \
 		--rpc-url $(REMOTE_RPC) --broadcast --interactives 1
 
 # ─── Verify (read-only) ───────────────────────────────────────────────────────
