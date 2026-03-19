@@ -35,8 +35,10 @@ help:
 	@echo "    make clean            — remove build artifacts"
 	@echo ""
 	@echo "  Deploy (protocol)  — set RPC_URL in .env"
-	@echo "    make deploy-singletons   — AddressRegistry + AdminGateway + Hub"
-	@echo "    make deploy-vault        — SyShare + LiquidityPool + SyVault"
+	@echo "    make deploy-singletons        — AddressRegistry + AdminGateway + Hub"
+	@echo "    make deploy-vault             — SyShare + LiquidityPool + SyVault"
+	@echo "    make activate-vault-schedule  — schedule Pending -> Active transition (timelock)"
+	@echo "    make activate-vault-execute   — execute after TIMELOCK_DELAY has elapsed"
 	@echo ""
 	@echo "  Deploy (OFT bridge)  — set HOME_RPC / REMOTE_RPC in .env"
 	@echo "    make deploy-mock-token   — mintable ERC-20 stand-in (testnet only)"
@@ -92,6 +94,14 @@ deploy-singletons:
 deploy-vault:
 	forge script script/protocol/DeployVault.s.sol \
 		--rpc-url $(RPC_URL) --broadcast --verify --interactives 1
+
+activate-vault-schedule:
+	forge script script/protocol/ActivateVault.s.sol:ActivateVault_Schedule \
+		--rpc-url $(RPC_URL) --broadcast --interactives 1
+
+activate-vault-execute:
+	forge script script/protocol/ActivateVault.s.sol:ActivateVault_Execute \
+		--rpc-url $(RPC_URL) --broadcast --interactives 1
 
 # ─── Deploy — OFT Bridge ──────────────────────────────────────────────────────
 
