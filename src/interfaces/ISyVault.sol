@@ -376,7 +376,12 @@ interface ISyVault {
 
     /// @notice Maximum assets depositable by receiver.
     /// @dev    Returns 0 if deposits are paused, receiver not whitelisted, or maxTVL reached.
-    ///         maxTVL calculation includes pending deposits.
+    ///         TVL is computed as sharePrice × totalSupply() — this is TOTAL TVL, which includes
+    ///         shares locked for pending redeems. Those shares are burned at settleRedeemBatch(),
+    ///         not at claimRedeemRequest(). Deposit capacity therefore only opens up after the
+    ///         Allocator settles a redeem batch — not when users claim their assets.
+    ///         Additionally, queued pending deposit assets are included in the cap check, so
+    ///         headroom = maxTVL - (sharePrice × totalSupply()) - pendingDepositAssets.
     function maxDeposit(address receiver) external view returns (uint256);
 
     /// @notice Maximum shares redeemable by owner.
@@ -569,6 +574,10 @@ interface ISyVault {
     function allocator()               external view returns (address);
     function feeRecipient()            external view returns (address);
     function adminGateway()            external view returns (address);
+    /// @notice Maximum TVL cap in raw asset units. 0 = no cap.
+    /// @dev    Enforced as: sharePrice × totalSupply() + pendingDepositAssets + newAssets <= maxTVL.
+    ///         totalSupply() is TOTAL supply — includes shares locked for pending redeems.
+    ///         The cap therefore reflects full economic exposure, not just freely tradable shares.
     function maxTvl()                  external view returns (uint256);
     function minDeposit()              external view returns (uint256);
     function maxSharePriceDelta()      external view returns (uint256);
@@ -628,6 +637,8 @@ interface ISyVault {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Set the maximum TVL cap (raw asset units). 0 = no cap. onlyAdminGateway.
+    /// @dev    TVL uses TOTAL share supply (including redeem-locked shares), so the cap only
+    ///         loosens after settleRedeemBatch() burns the redeemed shares — not after user claims.
     function setMaxTvl(uint256 maxTVL) external;
     /// @notice Set the minimum deposit amount (raw asset units). 0 = no minimum. onlyAdminGateway.
     function setMinDeposit(uint256 minDeposit) external;
