@@ -217,6 +217,28 @@ Command-line variable assignments override `.env` — they have the highest Make
 
 For the **home-side** commands (`wire-options-home`, `wire-ratelimit`, `wire-libs-home`, `wire-dvn-home`, `wire-peers-home`): re-run each with `PEER_EID` overridden for each new remote chain. The adapter accumulates config per EID — earlier EIDs are not affected.
 
+### Direct peer-to-peer pathways
+
+The steps above only wire each peer **to the adapter** (home chain). If you want tokens to travel directly between two remote chains — without routing through the home chain — you must wire the two peers to each other as well.
+
+Run the full remote wiring sequence on each peer, pointing at the other peer as the counterpart:
+
+```bash
+# From Base Sepolia peer → Optimism Sepolia peer
+make wire-options-remote  REMOTE_RPC=https://sepolia.base.org    PEER=0xABC... ADAPTER_EID=40245 PEER_EID=40232
+make wire-libs-remote     REMOTE_RPC=https://sepolia.base.org    PEER=0xABC... ADAPTER_EID=40245 RECEIVE_LIB=0x... REMOTE_SEND_LIB=0x...
+make wire-dvn-remote      REMOTE_RPC=https://sepolia.base.org    PEER=0xABC... ADAPTER_EID=40245 RECEIVE_LIB=0x... REMOTE_SEND_LIB=0x... DVN_REMOTE=0x... REMOTE_EXECUTOR=0x...
+make wire-peers-remote    REMOTE_RPC=https://sepolia.base.org    PEER=0xABC... ADAPTER_EID=40245
+
+# From Optimism Sepolia peer → Base Sepolia peer (mirror)
+make wire-options-remote  REMOTE_RPC=https://sepolia.optimism.io PEER=0xDEF... ADAPTER_EID=40232 PEER_EID=40245
+make wire-libs-remote     REMOTE_RPC=https://sepolia.optimism.io PEER=0xDEF... ADAPTER_EID=40232 RECEIVE_LIB=0x... REMOTE_SEND_LIB=0x...
+make wire-dvn-remote      REMOTE_RPC=https://sepolia.optimism.io PEER=0xDEF... ADAPTER_EID=40232 RECEIVE_LIB=0x... REMOTE_SEND_LIB=0x... DVN_REMOTE=0x... REMOTE_EXECUTOR=0x...
+make wire-peers-remote    REMOTE_RPC=https://sepolia.optimism.io PEER=0xDEF... ADAPTER_EID=40232
+```
+
+> **Note:** `ADAPTER_EID` here is the EID of the chain running the script (the local peer), not the home-chain adapter. The wiring is always bidirectional — both sides must be configured or messages will be rejected.
+
 ---
 
 ## Wiring Multiple Vaults
