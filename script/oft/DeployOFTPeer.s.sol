@@ -48,6 +48,7 @@ contract DeployOFTPeer is Script {
 
         // First 20 bytes = deployer (CreateX front-run protection).
         // Last 12 bytes  = unique suffix.
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes32 salt = bytes32(abi.encodePacked(deployer, bytes12(PEER_SALT_SUFFIX)));
 
         bytes memory initCode = abi.encodePacked(

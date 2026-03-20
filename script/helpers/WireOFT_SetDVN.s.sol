@@ -92,10 +92,12 @@ library DVNHelper {
         pure
         returns (UlnConfig memory uln)
     {
+        require(dvnCount <= type(uint8).max, "DVNHelper: dvnCount overflow");
         address[] memory requiredDVNs = buildRequiredDVNs(dvnCount, dvn1, dvn2);
         address[] memory optionalDVNs = new address[](0);
         uln = UlnConfig({
             confirmations:        confs,
+            // forge-lint: disable-next-line(unsafe-typecast)
             requiredDVNCount:     uint8(dvnCount),
             optionalDVNCount:     NIL_DVN_COUNT,
             optionalDVNThreshold: NIL_DVN_THRESHOLD,

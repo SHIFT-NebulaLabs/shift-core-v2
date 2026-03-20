@@ -47,7 +47,8 @@ contract DeployOFTAdapter is Script {
         address oftOwner   = vm.envAddress("OFT_OWNER");
 
         // First 20 bytes = deployer (CreateX front-run protection).
-        // Last 12 bytes  = unique suffix.
+        // Last 12 bytes  = unique suffix (intentional truncation of bytes32 salt to bytes12).
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes32 salt = bytes32(abi.encodePacked(deployer, bytes12(ADAPTER_SALT_SUFFIX)));
 
         bytes memory initCode = abi.encodePacked(
