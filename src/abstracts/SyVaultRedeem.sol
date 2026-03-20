@@ -45,13 +45,14 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     /// @dev controller → cycleId → owner who submitted the request (for cancellation).
     mapping(address controller => mapping(uint256 cycleId => address owner)) internal s_redeemRequestOwner;
 
-    // ── Active redeem tracking (one active redeem per owner) ───
+    // ── Active redeem tracking (one active redeem per controller) ───
 
-    /// @dev owner → active cycleId (0 = no active redeem).
-    mapping(address owner => uint256 cycleId) internal s_activeRedeemCycleId;
+    /// @dev controller → active cycleId (0 = no active redeem).
+    ///      Keyed by controller — the EIP-7540 entity that owns the request and calls claim functions.
+    mapping(address controller => uint256 cycleId) internal s_activeRedeemCycleId;
 
-    /// @dev owner → true if active redeem is fast.
-    mapping(address owner => bool isFast) internal s_activeRedeemIsFast;
+    /// @dev controller → true if active redeem is fast.
+    mapping(address controller => bool isFast) internal s_activeRedeemIsFast;
 
     // ── Cycle counters ─────────────────────────────────────────
 
@@ -86,16 +87,16 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         returns (uint256 requestId)
     {
         if (_shares == 0) revert SyVault__ZeroAmount();
-        // One active redeem per owner at a time.
-        if (s_activeRedeemCycleId[_owner] != 0) revert SyVault__RedeemRequestAlreadyPending();
+        // One active redeem per controller at a time.
+        if (s_activeRedeemCycleId[_controller] != 0) revert SyVault__RedeemRequestAlreadyPending();
 
         requestId = _openOrReuseCycle(CycleType.Normal);
 
         s_redeemCycles[requestId].shares             += _shares;
         s_pendingRedeems[_controller][requestId]     += _shares;
         s_redeemRequestOwner[_controller][requestId]  = _owner;
-        s_activeRedeemCycleId[_owner]                 = requestId;
-        s_activeRedeemIsFast[_owner]                  = false;
+        s_activeRedeemCycleId[_controller]            = requestId;
+        s_activeRedeemIsFast[_controller]             = false;
         s_totalLockedShares                           += _shares;
 
         // Lock shares in this contract — burned only at settleRedeemBatch().
@@ -117,8 +118,8 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
 
         cycle.shares                            -= shares;
         s_pendingRedeems[_controller][_requestId] = 0;
-        s_activeRedeemCycleId[owner]              = 0;
-        s_activeRedeemIsFast[owner]               = false;
+        s_activeRedeemCycleId[_controller]        = 0;
+        s_activeRedeemIsFast[_controller]         = false;
         s_totalLockedShares                       -= shares;
 
         // Return locked shares to original owner.
@@ -136,15 +137,15 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     {
         if (_shares == 0) revert SyVault__ZeroAmount();
         // No active redeem of any kind allowed.
-        if (s_activeRedeemCycleId[_owner] != 0) revert SyVault__RedeemRequestAlreadyPending();
+        if (s_activeRedeemCycleId[_controller] != 0) revert SyVault__RedeemRequestAlreadyPending();
 
         requestId = _openOrReuseCycle(CycleType.Fast);
 
         s_redeemCycles[requestId].shares             += _shares;
         s_pendingRedeems[_controller][requestId]     += _shares;
         s_redeemRequestOwner[_controller][requestId]  = _owner;
-        s_activeRedeemCycleId[_owner]                 = requestId;
-        s_activeRedeemIsFast[_owner]                  = true;
+        s_activeRedeemCycleId[_controller]            = requestId;
+        s_activeRedeemIsFast[_controller]             = true;
         s_totalLockedShares                           += _shares;
 
         IERC20(address(i_share)).safeTransferFrom(_owner, address(this), _shares);
@@ -165,8 +166,8 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
 
         cycle.shares                             -= shares;
         s_pendingRedeems[_controller][_requestId] = 0;
-        s_activeRedeemCycleId[owner]              = 0;
-        s_activeRedeemIsFast[owner]               = false;
+        s_activeRedeemCycleId[_controller]        = 0;
+        s_activeRedeemIsFast[_controller]         = false;
         s_totalLockedShares                       -= shares;
 
         IERC20(address(i_share)).safeTransfer(owner, shares);
@@ -425,14 +426,14 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         return gross - (gross * s_fastRedeemFeeBps / BASIS_POINTS);
     }
 
-    /// @notice Active redeem request for an owner.
-    function activeRedeemRequest(address _owner)
+    /// @notice Active redeem request for a controller.
+    function activeRedeemRequest(address _controller)
         external
         view
         returns (uint256 requestId, bool isFast)
     {
-        requestId = s_activeRedeemCycleId[_owner];
-        isFast    = s_activeRedeemIsFast[_owner];
+        requestId = s_activeRedeemCycleId[_controller];
+        isFast    = s_activeRedeemIsFast[_controller];
     }
 
     /// @notice Total assets reserved for locked redeem cycles not yet settled.
@@ -458,12 +459,15 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         return s_claimableRedeemAssets;
     }
 
-    /// @notice Maximum shares redeemable by owner.
-    function maxRedeem(address _owner) external view returns (uint256) {
-        uint256 cycleId = s_activeRedeemCycleId[_owner];
+    /// @notice Maximum shares claimable by controller (ERC-4626 maxRedeem).
+    /// @dev    EIP-7540: in an async vault the "owner" param to maxRedeem maps to the
+    ///         controller — the entity that owns the request and calls redeem()/withdraw().
+    ///         Pass the controller address, not the original share owner.
+    function maxRedeem(address _controller) external view returns (uint256) {
+        uint256 cycleId = s_activeRedeemCycleId[_controller];
         if (cycleId == 0) return 0;
         if (!s_redeemCycles[cycleId].settled) return 0;
-        return s_pendingRedeems[_owner][cycleId];
+        return s_pendingRedeems[_controller][cycleId];
     }
 
     /// @notice Current normal redeem cycle id.

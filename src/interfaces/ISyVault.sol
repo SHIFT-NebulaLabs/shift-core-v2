@@ -202,6 +202,8 @@ interface ISyVault {
     /// @notice Submit a normal redeem request. Shares locked immediately.
     /// @dev    Pending state. Added to current 7-day cycle. requestId = currentNormalCycleId().
     ///         If the current cycle is past its cutoff epoch, the request automatically goes to the next cycle.
+    ///         Reverts with SyVault__RedeemRequestAlreadyPending if controller already has an active redeem.
+    ///         One active redeem per controller at a time (protocol restriction, not EIP-7540 mandated).
     ///         Only callable via Hub.
     /// @param  shares      Shares to redeem.
     /// @param  controller  Address that will own the request and can claim assets.
@@ -384,8 +386,10 @@ interface ISyVault {
     ///         headroom = maxTVL - (sharePrice × totalSupply()) - pendingDepositAssets.
     function maxDeposit(address receiver) external view returns (uint256);
 
-    /// @notice Maximum shares redeemable by owner.
-    /// @dev    Returns claimable shares for this owner.
+    /// @notice Maximum shares claimable by controller (ERC-4626 maxRedeem).
+    /// @dev    EIP-7540: in an async vault the "owner" param maps to the controller —
+    ///         the entity that owns the request and calls redeem()/withdraw().
+    ///         Pass the controller address, not the original share owner.
     function maxRedeem(address owner) external view returns (uint256);
 
     /// @notice Single-call eligibility check for requestDeposit — use in FE to surface a reason.
@@ -398,14 +402,14 @@ interface ISyVault {
     function checkDepositAmount(uint256 assets) external view returns (DepositRequestStatus status);
 
     /// @notice Single-call eligibility check for requestRedeem — use in FE to surface a reason.
-    /// @param  owner   Address that will lock shares.
-    /// @return status  Ok if request can proceed; PastCutoff means it will open a new cycle (not blocking).
-    function requestRedeemStatus(address owner) external view returns (RedeemRequestStatus status);
+    /// @param  controller  Address that will own the request and call claim functions.
+    /// @return status      Ok if request can proceed; PastCutoff means it will open a new cycle (not blocking).
+    function requestRedeemStatus(address controller) external view returns (RedeemRequestStatus status);
 
     /// @notice Pre-flight check for requestFastRedeem(). Returns the reason the call would revert, or Ok.
-    /// @param  owner   Address that will lock shares.
-    /// @return status  Ok if request can proceed; otherwise the blocking reason.
-    function requestFastRedeemStatus(address owner) external view returns (FastRedeemRequestStatus status);
+    /// @param  controller  Address that will own the request and call claim functions.
+    /// @return status      Ok if request can proceed; otherwise the blocking reason.
+    function requestFastRedeemStatus(address controller) external view returns (FastRedeemRequestStatus status);
 
     /// @notice MUST revert — async vault, no synchronous preview. EIP-7540 compliance.
     function previewDeposit(uint256 assets) external view returns (uint256);
@@ -533,10 +537,10 @@ interface ISyVault {
     /// @notice Active redeem request for an owner.
     /// @dev    Returns (0, false) if no active request. requestId equals cycleId — use directly
     ///         with redeemCycleSchedule(), pendingRedeemRequest(), or claimableRedeemRequest().
-    /// @param  owner  Address to query.
-    /// @return requestId  Active cycle id (0 if none).
-    /// @return isFast     True if the active request is a fast redeem.
-    function activeRedeemRequest(address owner)
+    /// @param  controller  Controller address to query (the entity that owns the request).
+    /// @return requestId   Active cycle id (0 if none).
+    /// @return isFast      True if the active request is a fast redeem.
+    function activeRedeemRequest(address controller)
         external
         view
         returns (uint256 requestId, bool isFast);
