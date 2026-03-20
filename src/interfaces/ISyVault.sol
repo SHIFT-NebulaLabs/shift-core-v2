@@ -246,12 +246,14 @@ interface ISyVault {
     /// @param  receiver    Address that will receive minted shares.
     /// @param  controller  Controller that owns the deposit request.
     /// @return shares      Shares minted to receiver.
+    /// @dev    EIP-7540: msg.sender must equal controller or be an operator approved by controller.
     function deposit(uint256 assets, address receiver, address controller)
         external
         returns (uint256 shares);
 
     /// @notice Claim a settled deposit by specifying exact shares — mints shares to receiver.
     /// @dev    EIP-7540 compliance. Debits corresponding assets from claimable balance.
+    ///         msg.sender must equal controller or be an operator approved by controller.
     ///         Only callable via Hub.
     /// @param  shares      Exact number of shares to mint.
     /// @param  receiver    Address that will receive minted shares.
@@ -264,6 +266,7 @@ interface ISyVault {
     /// @notice Claim a settled redeem — burns shares and transfers assets to receiver.
     /// @dev    Does NOT lock shares — already happened at requestRedeem(). Only callable via Hub.
     ///         Fast redeem fee deducted from assets at claim if applicable.
+    ///         EIP-7540: msg.sender must equal controller or be an operator approved by controller.
     /// @param  shares      Shares to redeem (must match locked amount).
     /// @param  receiver    Address that will receive assets.
     /// @param  controller  Controller that owns the redeem request.
@@ -274,6 +277,7 @@ interface ISyVault {
 
     /// @notice Claim a settled redeem by specifying exact assets — burns corresponding shares.
     /// @dev    EIP-7540 compliance. Only callable via Hub.
+    ///         msg.sender must equal controller or be an operator approved by controller.
     /// @param  assets      Exact asset amount to receive.
     /// @param  receiver    Address that will receive assets.
     /// @param  controller  Controller that owns the redeem request.

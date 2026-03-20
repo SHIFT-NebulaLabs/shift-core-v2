@@ -55,12 +55,14 @@ contract Hub is IHub {
     /// @inheritdoc IHub
     function deposit(uint256 _vaultId, uint256 _assets, address _receiver, address _controller) external returns (uint256 shares) {
         _requireActiveOrDeprecated(_vaultId);
+        _requireOwnerOrOperator(_vaultId, _controller, _controller);
         return ISyVault(_getSyVault(_vaultId)).deposit(_assets, _receiver, _controller);
     }
 
     /// @inheritdoc IHub
     function mint(uint256 _vaultId, uint256 _shares, address _receiver, address _controller) external returns (uint256 assets) {
         _requireActiveOrDeprecated(_vaultId);
+        _requireOwnerOrOperator(_vaultId, _controller, _controller);
         return ISyVault(_getSyVault(_vaultId)).mint(_shares, _receiver, _controller);
     }
 
@@ -84,12 +86,14 @@ contract Hub is IHub {
     /// @inheritdoc IHub
     function redeem(uint256 _vaultId, uint256 _shares, address _receiver, address _controller) external returns (uint256 assets) {
         _requireActiveOrDeprecated(_vaultId);
+        _requireOwnerOrOperator(_vaultId, _controller, _controller);
         return ISyVault(_getSyVault(_vaultId)).redeem(_shares, _receiver, _controller);
     }
 
     /// @inheritdoc IHub
     function withdraw(uint256 _vaultId, uint256 _assets, address _receiver, address _controller) external returns (uint256 shares) {
         _requireActiveOrDeprecated(_vaultId);
+        _requireOwnerOrOperator(_vaultId, _controller, _controller);
         return ISyVault(_getSyVault(_vaultId)).withdraw(_assets, _receiver, _controller);
     }
 
@@ -150,11 +154,15 @@ contract Hub is IHub {
         }
     }
 
-    /// @dev Revert if msg.sender is not the owner and not an approved operator of the controller.
-    ///      EIP-7540: owner is the asset/share source; operator approval is on the controller.
-    function _requireOwnerOrOperator(uint256 _vaultId, address _controller, address _owner) internal view {
+    /// @dev Revert if msg.sender is not the owner and not an approved operator of the owner.
+    ///      Per EIP-7540:
+    ///        - requestDeposit / requestRedeem : operator must be approved by owner
+    ///          (the address whose assets / shares are moved).
+    ///        - deposit / mint / redeem / withdraw / cancel : called with _owner = _controller,
+    ///          so the check collapses to isOperator(controller, msg.sender) — correct per standard.
+    function _requireOwnerOrOperator(uint256 _vaultId, address /* _controller */, address _owner) internal view {
         if (msg.sender != _owner) {
-            if (!ISyVault(_getSyVault(_vaultId)).isOperator(_controller, msg.sender)) {
+            if (!ISyVault(_getSyVault(_vaultId)).isOperator(_owner, msg.sender)) {
                 revert Hub__NotAuthorized();
             }
         }
