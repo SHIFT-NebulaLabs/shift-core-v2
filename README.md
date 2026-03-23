@@ -94,12 +94,14 @@ Fill `ADAPTER` into `.env`.
 ### Step 4 — Deploy OFT peer (each remote chain)
 
 ```bash
-make deploy-peer         # REMOTE_RPC in .env
+make deploy-peer         # REMOTE_RPC + SYSHARE in .env
 ```
 
 Fill `PEER` into `.env`.
 
-**Multiple remote chains:** run `deploy-peer` once per remote chain with the matching `REMOTE_RPC`. Each run produces a different `PEER` address — save each one before moving on.
+> `SYSHARE` is the home-chain share token address. The peer uses it only to derive the CREATE3 salt — it is not passed to the peer contract. This ensures the peer lands at the same address as the adapter.
+
+**Multiple remote chains:** run `deploy-peer` once per remote chain with the matching `REMOTE_RPC`. Every peer lands at the same address (same `SYSHARE` → same salt) — no need to update `PEER` between runs.
 
 ---
 

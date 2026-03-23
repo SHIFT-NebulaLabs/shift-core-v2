@@ -6,8 +6,9 @@ import {Script, console} from "forge-std/Script.sol";
 import {SySharePeer} from "src/crosschain/SySharePeer.sol";
 import {ICreateX}    from "script/interfaces/ICreateX.sol";
 
-// Salt suffix — must match across all remote chains to get the same address.
-bytes32 constant PEER_SALT_SUFFIX = keccak256("shift.SySharePeer.v1");
+// Salt suffix — shared with DeployOFTAdapter so adapter + all peers of the same vault
+// land at the same address. Must match the value in DeployOFTAdapter.s.sol.
+bytes32 constant OFT_SALT_SUFFIX = keccak256("shift.SyOFT.v1");
 
 // CreateX factory — same address on all EVM chains.
 address constant CREATEX = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
@@ -19,7 +20,8 @@ address constant CREATEX = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
 ///
 ///         CREATE3 ensures the peer lands at the same address on every remote chain,
 ///         regardless of the lzEndpoint constructor arg which differs per chain.
-///         Address depends only on (deployer, PEER_SALT_SUFFIX).
+///         Address depends only on (deployer, SYSHARE, OFT_SALT_SUFFIX) — the same
+///         formula used by DeployOFTAdapter, so adapter and all peers share one address.
 ///
 ///         Deployment order (do not skip steps):
 ///           1. Deploy SyOFTAdapter on home chain (DeployOFTAdapter.s.sol).
@@ -30,6 +32,7 @@ address constant CREATEX = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
 ///
 ///         Required .env:
 ///           DEPLOYER_ADDRESS   — EOA used to deploy (must match the deployer used for the adapter)
+///           SYSHARE            — SyShare ERC-20 address on the HOME chain (used only for salt derivation)
 ///           VAULT_SHARE_NAME   — token name, must match home chain (e.g. "Shift Yield Share USDC")
 ///           VAULT_SHARE_SYMBOL — token symbol, must match home chain (e.g. "syUSDC")
 ///           LZ_ENDPOINT        — LayerZero EndpointV2 address on THIS remote chain
@@ -40,16 +43,20 @@ address constant CREATEX = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
 
 contract DeployOFTPeer is Script {
     function run() external {
-        address deployer   = vm.envAddress("DEPLOYER_ADDRESS");
+        address deployer     = vm.envAddress("DEPLOYER_ADDRESS");
+        address syShare      = vm.envAddress("SYSHARE");
         string memory name   = vm.envString("VAULT_SHARE_NAME");
         string memory symbol = vm.envString("VAULT_SHARE_SYMBOL");
         address lzEndpoint   = vm.envAddress("LZ_ENDPOINT");
         address oftOwner     = vm.envAddress("OFT_OWNER");
 
         // First 20 bytes = deployer (CreateX front-run protection).
-        // Last 12 bytes  = unique suffix.
+        // Last 12 bytes  = vault-scoped suffix derived from the home-chain share token address.
+        //   Identical formula to DeployOFTAdapter — so adapter and all peers of this vault
+        //   land at the same address across chains.
+        //   Different vaults have different syShare addresses → different salts → different OFT addresses.
         // forge-lint: disable-next-line(unsafe-typecast)
-        bytes32 salt = bytes32(abi.encodePacked(deployer, bytes12(PEER_SALT_SUFFIX)));
+        bytes32 salt = bytes32(abi.encodePacked(deployer, bytes12(keccak256(abi.encodePacked(syShare, OFT_SALT_SUFFIX)))));
 
         bytes memory initCode = abi.encodePacked(
             type(SySharePeer).creationCode,
@@ -61,6 +68,7 @@ contract DeployOFTPeer is Script {
         console.log("=== OFT PEER DEPLOY (remote chain) ===");
         console.log("Predicted address :", predicted);
         console.log("Deployer          :", deployer);
+        console.log("SyShare (salt)    :", syShare);
         console.log("Name              :", name);
         console.log("Symbol            :", symbol);
         console.log("LZ Endpoint       :", lzEndpoint);

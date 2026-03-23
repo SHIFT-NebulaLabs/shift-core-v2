@@ -6,8 +6,9 @@ import {Script, console} from "forge-std/Script.sol";
 import {SyOFTAdapter} from "src/crosschain/SyOFTAdapter.sol";
 import {ICreateX}     from "script/interfaces/ICreateX.sol";
 
-// Salt suffix — change to redeploy at a new address if needed.
-bytes32 constant ADAPTER_SALT_SUFFIX = keccak256("shift.SyOFTAdapter.v1");
+// Salt suffix — shared with DeployOFTPeer so adapter + all peers of the same vault
+// land at the same address. Change to redeploy the entire OFT family at new addresses.
+bytes32 constant OFT_SALT_SUFFIX = keccak256("shift.SyOFT.v1");
 
 // CreateX factory — same address on all EVM chains.
 address constant CREATEX = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
@@ -18,7 +19,8 @@ address constant CREATEX = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
 ///
 ///         CREATE3 ensures the adapter lands at the same address on every chain,
 ///         regardless of the lzEndpoint constructor arg which differs per chain.
-///         Address depends only on (deployer, ADAPTER_SALT_SUFFIX).
+///         Address depends only on (deployer, SYSHARE, OFT_SALT_SUFFIX) — the same
+///         formula used by DeployOFTPeer, so adapter and all peers share one address.
 ///
 ///         ⚠️  Deploy EXACTLY ONE adapter per SyShare globally.
 ///             Multiple adapters = broken liquidity + permanent token loss.
@@ -47,9 +49,12 @@ contract DeployOFTAdapter is Script {
         address oftOwner   = vm.envAddress("OFT_OWNER");
 
         // First 20 bytes = deployer (CreateX front-run protection).
-        // Last 12 bytes  = unique suffix (intentional truncation of bytes32 salt to bytes12).
+        // Last 12 bytes  = vault-scoped suffix derived from the share token address.
+        //   keccak256(syShare ++ OFT_SALT_SUFFIX) is the same value computed by
+        //   DeployOFTPeer, so adapter and all peers of this vault land at one address.
+        //   Different vaults have different syShare addresses → different salts → different OFT addresses.
         // forge-lint: disable-next-line(unsafe-typecast)
-        bytes32 salt = bytes32(abi.encodePacked(deployer, bytes12(ADAPTER_SALT_SUFFIX)));
+        bytes32 salt = bytes32(abi.encodePacked(deployer, bytes12(keccak256(abi.encodePacked(syShare, OFT_SALT_SUFFIX)))));
 
         bytes memory initCode = abi.encodePacked(
             type(SyOFTAdapter).creationCode,
