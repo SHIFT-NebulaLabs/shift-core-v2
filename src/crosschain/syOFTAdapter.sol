@@ -63,13 +63,17 @@ contract SyOFTAdapter is OFTAdapter, RateLimiter {
 
     /// @dev Apply outbound rate limit before debiting tokens from the adapter.
     ///      Per spec section 10.3 — rate limiting caps bridgeable flow per period.
+    ///      _removeDust is applied before _outflow so the rate limiter tracks the actual
+    ///      locked amount, not the pre-truncation gross amount. Without this, each transfer
+    ///      over-counts by up to (decimalConversionRate - 1) units, making the effective
+    ///      rate limit stricter than configured.
     function _debit(
         address _from,
         uint256 _amountLD,
         uint256 _minAmountLD,
         uint32  _dstEid
     ) internal override returns (uint256 amountSentLD, uint256 amountReceivedLD) {
-        _outflow(_dstEid, _amountLD);
+        _outflow(_dstEid, _removeDust(_amountLD));
         return super._debit(_from, _amountLD, _minAmountLD, _dstEid);
     }
 }
