@@ -175,11 +175,15 @@ contract SyVaultEpochSettleTest is Base {
         vm.prank(allocator);
         vault.setAllocatorActive(true);
 
-        // First skip: uses previous
+        // First skip (skips = 0 → 1): uses previous
         _settleEpoch(2e18);
         assertEq(vault.latestSharePrice(), INITIAL_PRICE);
 
-        // Second skip: ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS = 2, so this time it proceeds
+        // Second skip (skips = 1 → 2): still uses previous — ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS = 2
+        _settleEpoch(2e18);
+        assertEq(vault.latestSharePrice(), INITIAL_PRICE);
+
+        // Third call (skips = 2 >= 2): override fires, proposed price accepted
         _settleEpoch(2e18);
         assertEq(vault.latestSharePrice(), 2e18);
         // allocatorActive reset

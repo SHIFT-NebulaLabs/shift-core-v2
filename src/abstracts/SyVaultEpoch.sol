@@ -98,12 +98,12 @@ abstract contract SyVaultEpoch is SyVaultBase {
         if (_proposed == 0) return _prev;
 
         if (s_allocatorActive) {
-            s_allocatorActiveSkips++;
             if (s_allocatorActiveSkips >= ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS) {
                 s_allocatorActive      = false;
                 s_allocatorActiveSkips = 0;
                 return _proposed;
             }
+            s_allocatorActiveSkips++;
             return _prev;
         }
 
