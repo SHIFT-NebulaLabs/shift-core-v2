@@ -11,9 +11,8 @@ import {SafeERC20}     from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20
 import {IERC7540Deposit, IERC7540Redeem} from "src/interfaces/IERC7540.sol";
 import {
     SyVault__ZeroAmount,
-    SyVault__NotWhitelisted,
-    SyVault__MaxTVLExceeded,
     SyVault__BelowMinDeposit,
+    SyVault__DepositNotAllowed,
     SyVault__InvalidOwner,
     SyVault__NoPendingRequest,
     SyVault__NoClaimableDeposit,
@@ -131,18 +130,9 @@ contract SyVault is SyVaultRedeem {
         if (_assets == 0) revert SyVault__ZeroAmount();
         if (s_minDeposit > 0 && _assets < s_minDeposit) revert SyVault__BelowMinDeposit();
 
-        // Deposit whitelist check (on controller, since controller owns the claim).
-        if (s_depositWhitelistEnabled && !s_depositWhitelist[_controller]) {
-            revert SyVault__NotWhitelisted();
-        }
-
-        // MaxTVL check: current TVL + pending deposits + new assets must not exceed cap.
-        if (s_maxTVL > 0) {
-            uint256 tvl = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION;
-            if (tvl + s_totalPendingDeposits + _assets > s_maxTVL) {
-                revert SyVault__MaxTVLExceeded();
-            }
-        }
+        // Single eligibility gate — delegates pause, whitelist, stale price, and TVL checks
+        // to maxDeposit(). Call requestDepositStatus() for the specific rejection reason.
+        if (_assets > maxDeposit(_controller)) revert SyVault__DepositNotAllowed();
 
         requestId = currentEpoch();
 
@@ -481,7 +471,9 @@ contract SyVault is SyVaultRedeem {
     }
 
     /// @inheritdoc ISyVault
-    function maxDeposit(address _receiver) external view returns (uint256) {
+    /// @dev Public (not external) so requestDeposit() can call it internally as the single
+    ///      eligibility gate — avoids duplicating whitelist, stale price, and TVL checks.
+    function maxDeposit(address _receiver) public view returns (uint256) {
         if (s_pausedFull || s_pausedDeposits) return 0;
         if (s_depositWhitelistEnabled && !s_depositWhitelist[_receiver]) return 0;
         // Stale price guard — block new deposits if keeper has fallen too far behind.
@@ -490,10 +482,17 @@ contract SyVault is SyVaultRedeem {
             uint256 stale   = current > s_nextEpochToSettle ? current - s_nextEpochToSettle : 0;
             if (stale >= s_maxStalePriceEpochs) return 0;
         }
-        if (s_maxTVL == 0) return type(uint256).max;
-        uint256 tvl  = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION;
-        uint256 used = tvl + s_totalPendingDeposits;
-        return used >= s_maxTVL ? 0 : s_maxTVL - used;
+        uint256 available;
+        if (s_maxTVL == 0) {
+            available = type(uint256).max;
+        } else {
+            uint256 tvl  = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION;
+            uint256 used = tvl + s_totalPendingDeposits;
+            available = used >= s_maxTVL ? 0 : s_maxTVL - used;
+        }
+        // If remaining room is below minDeposit, no deposit can succeed — signal unavailable.
+        if (s_minDeposit > 0 && available < s_minDeposit) return 0;
+        return available;
     }
 
     /// @inheritdoc ISyVault

@@ -6,8 +6,7 @@ import {VaultState} from "src/types/Types.sol";
 import {
     SyVault__ZeroAmount,
     SyVault__DepositsPaused,
-    SyVault__NotWhitelisted,
-    SyVault__MaxTVLExceeded,
+    SyVault__DepositNotAllowed,
     SyVault__BelowMinDeposit,
     SyVault__NoPendingRequest,
     SyVault__NoClaimableDeposit,
@@ -75,7 +74,7 @@ contract SyVaultDepositTest is Base {
 
         _giveAssets(alice, 1e18);
         vm.prank(alice);
-        vm.expectRevert(SyVault__NotWhitelisted.selector);
+        vm.expectRevert(SyVault__DepositNotAllowed.selector);
         hub.requestDeposit(VAULT_ID, 1e18, alice, alice);
     }
 
@@ -88,7 +87,7 @@ contract SyVaultDepositTest is Base {
 
         _giveAssets(alice, depositAmount);
         vm.prank(alice);
-        vm.expectRevert(SyVault__MaxTVLExceeded.selector);
+        vm.expectRevert(SyVault__DepositNotAllowed.selector);
         hub.requestDeposit(VAULT_ID, depositAmount, alice, alice);
     }
 

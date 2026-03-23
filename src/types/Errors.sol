@@ -27,14 +27,8 @@ error SyVault__DepositsPaused();
 /// @notice Thrown when redeems are paused.
 error SyVault__RedeemsPaused();
 
-/// @notice Thrown when a deposit would push TVL above maxTVL.
-error SyVault__MaxTVLExceeded();
-
 /// @notice Thrown when a deposit amount is below the minimum deposit threshold.
 error SyVault__BelowMinDeposit();
-
-/// @notice Thrown when caller is not on the deposit whitelist.
-error SyVault__NotWhitelisted();
 
 /// @notice Thrown when requestFastRedeem() is called after cutoff but the current fast cycle is not yet settled.
 error SyVault__FastCycleNotSettled();
@@ -77,6 +71,10 @@ error SyVault__AsyncVault();
 
 /// @notice Thrown when a zero amount is passed where a positive value is required.
 error SyVault__ZeroAmount();
+
+/// @notice Thrown when requestDeposit() is rejected because maxDeposit() returned 0 or less than _assets.
+///         Call requestDepositStatus() for the specific reason (stale price, whitelist, TVL cap).
+error SyVault__DepositNotAllowed();
 
 /// @notice Thrown when a fee parameter exceeds the allowed maximum (BASIS_POINTS).
 error SyVault__InvalidParam();

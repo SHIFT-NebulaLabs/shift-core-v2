@@ -381,7 +381,10 @@ interface ISyVault {
     function convertToAssets(uint256 shares) external view returns (uint256 assets);
 
     /// @notice Maximum assets depositable by receiver.
-    /// @dev    Returns 0 if deposits are paused, receiver not whitelisted, or maxTVL reached.
+    /// @dev    Returns 0 if: deposits are paused, receiver not whitelisted, keeper price is stale,
+    ///         maxTVL reached, or remaining TVL headroom is below minDeposit.
+    ///         Used internally by requestDeposit() as the single eligibility gate — avoids
+    ///         duplicating whitelist, stale price, and TVL checks across the codebase.
     ///         TVL is computed as sharePrice × totalSupply() — this is TOTAL TVL, which includes
     ///         shares locked for pending redeems. Those shares are burned at settleRedeemBatch(),
     ///         not at claimRedeemRequest(). Deposit capacity therefore only opens up after the
