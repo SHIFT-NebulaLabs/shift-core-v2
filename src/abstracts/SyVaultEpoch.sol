@@ -127,14 +127,23 @@ abstract contract SyVaultEpoch is SyVaultBase {
         uint256 hwm            = s_hwm;
         uint256 feeSharesMinted;
         if (_price > hwm && s_performanceFeeBps > 0) {
+            uint256 grossPrice = _price; // pre-dilution price — used for HWM and event
             if (supply > 0) {
                 // Dilution model: feeShares = (price - Hwm) * supply * feeBps / (price * BASIS_POINTS)
                 feeSharesMinted = ((_price - hwm) * supply * s_performanceFeeBps)
                     / (_price * BASIS_POINTS);
-                if (feeSharesMinted > 0) i_share.mint(s_feeRecipient, feeSharesMinted);
+                if (feeSharesMinted > 0) {
+                    i_share.mint(s_feeRecipient, feeSharesMinted);
+                    // Adjust price to reflect dilution: TVL is invariant (P × S = newP × (S + feeShares)).
+                    // Without this, s_sharePrice × totalSupply overcounts TVL by P × feeShares.
+                    _price = (_price * supply) / (supply + feeSharesMinted);
+                }
             }
-            s_hwm = _price;
-            emit PerformanceFeeCollected(_epoch, _price, hwm, feeSharesMinted);
+            // HWM tracks the gross reported price — not the post-dilution price.
+            // Dilution at grossPrice already "pays" the fee; comparing future prices
+            // against the post-dilution price would allow a second fee collection on the same gain.
+            s_hwm = grossPrice;
+            emit PerformanceFeeCollected(_epoch, grossPrice, hwm, feeSharesMinted);
         }
 
         // ── Maintenance fee ────────────────────────────────────────────────────────────────
