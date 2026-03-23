@@ -147,8 +147,12 @@ abstract contract SyVaultEpoch is SyVaultBase {
         }
 
         // ── Maintenance fee ────────────────────────────────────────────────────────────────
+        // Condition: a full interval has elapsed since the last collection (or since vault start).
+        // Uses elapsed-since-last rather than epoch % interval to:
+        //   (a) avoid charging a full interval fee at epoch 0 (only 1 epoch elapsed);
+        //   (b) correctly collect during keeper catch-up even if an interval epoch was missed.
         if (s_maintenanceFeeInterval > 0 && s_maintenanceFeeBps > 0
-            && (_epoch % s_maintenanceFeeInterval) == 0)
+            && (_epoch - s_lastFeeCollectionEpoch >= s_maintenanceFeeInterval))
         {
             uint256 priceBefore  = _price;
             uint256 feeDeduction = (_price * s_maintenanceFeeBps * s_maintenanceFeeInterval)

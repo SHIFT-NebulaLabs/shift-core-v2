@@ -277,13 +277,14 @@ contract SyVaultEpochSettleTest is Base {
         vault.setMaintenanceFeeInterval(1);
         vm.stopPrank();
 
-        uint256 priceBefore = vault.latestSharePrice();
-
-        // Settle epoch 0 — which is epoch % 1 == 0, so fee fires
+        // Epoch 0: no fee — 0 epochs elapsed since vault start (0 - 0 < 1).
         _settleEpoch(INITIAL_PRICE);
+        assertEq(vault.latestSharePrice(), INITIAL_PRICE);
 
-        uint256 priceAfter = vault.latestSharePrice();
-        assertLt(priceAfter, priceBefore);
+        // Epoch 1: fee fires — 1 epoch elapsed since last collection (1 - 0 >= 1).
+        uint256 priceBefore = vault.latestSharePrice();
+        _settleEpoch(INITIAL_PRICE);
+        assertLt(vault.latestSharePrice(), priceBefore);
     }
 
     function test_epochSettle_maintenanceFee_zeroFee_noPriceChange() external {
