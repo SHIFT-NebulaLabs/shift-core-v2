@@ -59,7 +59,7 @@ contract AddressRegistryTest is Base {
         LiquidityPool pool2  = new LiquidityPool(address(asset), predictedVault2);
         SyVault vault2  = new SyVault(
             address(asset), address(share2), address(pool2),
-            address(hub), admin, keeper, allocator, feeRecip, INITIAL_PRICE
+            address(hub), admin, keeper, allocator, feeRecip, INITIAL_PRICE, true
         );
 
         vm.prank(admin);

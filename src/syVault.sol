@@ -92,6 +92,7 @@ contract SyVault is SyVaultRedeem {
     /// @param _allocator         Address of the Allocator EOA.
     /// @param _feeRecipient      Address that receives protocol fees.
     /// @param _initialSharePrice Initial share price in raw asset units (e.g. 1e6 for USDC).
+    /// @param _fastRedeemEnabled True to enable fast redeem requests at launch; false to disable.
     constructor(
         address _asset,
         address _share,
@@ -101,12 +102,14 @@ contract SyVault is SyVaultRedeem {
         address _keeper,
         address _allocator,
         address _feeRecipient,
-        uint256 _initialSharePrice
+        uint256 _initialSharePrice,
+        bool    _fastRedeemEnabled
     ) SyVaultBase(_asset, _share, _liquidityPool, _hub, _adminGateway, _keeper, _allocator, _feeRecipient) {
         if (_initialSharePrice == 0) revert SyVault__InvalidParam();
-        s_sharePrice      = _initialSharePrice;
-        s_hwm             = _initialSharePrice;
-        s_cycleIdCounter  = 1; // 0 reserved as "no active redeem" sentinel
+        s_sharePrice       = _initialSharePrice;
+        s_hwm              = _initialSharePrice;
+        s_cycleIdCounter   = 1; // 0 reserved as "no active redeem" sentinel
+        s_fastRedeemEnabled = _fastRedeemEnabled;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -451,6 +454,12 @@ contract SyVault is SyVaultRedeem {
         emit FastRedeemFeeWhitelistUpdated(_account, _approved);
     }
 
+    /// @inheritdoc ISyVault
+    function setFastRedeemEnabled(bool _enabled) external onlyAdminGateway {
+        s_fastRedeemEnabled = _enabled;
+        emit FastRedeemEnabledUpdated(_enabled);
+    }
+
     /*//////////////////////////////////////////////////////////////
                     EXTERNAL VIEW — EIP-7540
     //////////////////////////////////////////////////////////////*/
@@ -660,6 +669,9 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function depositWhitelistEnabled() external view returns (bool) { return s_depositWhitelistEnabled; }
+
+    /// @inheritdoc ISyVault
+    function fastRedeemEnabled() external view returns (bool) { return s_fastRedeemEnabled; }
 
     /// @inheritdoc ISyVault
     function isPaused() external view returns (bool deposits, bool redeems, bool full) {

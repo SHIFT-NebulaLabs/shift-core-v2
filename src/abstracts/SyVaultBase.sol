@@ -90,6 +90,10 @@ abstract contract SyVaultBase is ReentrancyGuard, ISyVault {
     mapping(address account => bool approved) internal s_depositWhitelist;
     bool internal s_depositWhitelistEnabled;
 
+    /// @dev True if fast redeem requests are accepted. Set at construction, toggled via AdminGateway.
+    ///      Cancel, settle, and claim are unaffected — in-flight cycles always complete.
+    bool internal s_fastRedeemEnabled;
+
     /// @dev Accounts exempt from the fast redeem fee.
     mapping(address account => bool exempt) internal s_fastRedeemFeeWhitelist;
 

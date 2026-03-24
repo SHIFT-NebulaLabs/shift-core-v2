@@ -7,6 +7,7 @@ import {
     SyVault__ZeroAmount,
     SyVault__RedeemRequestAlreadyPending,
     SyVault__FastCycleNotSettled,
+    SyVault__FastRedeemDisabled,
     SyVault__CycleLocked
 } from "src/types/Errors.sol";
 import {FAST_REDEEM_CUTOFF, FAST_REDEEM_LOCK_WINDOW, BASIS_POINTS} from "src/types/Constants.sol";
@@ -361,5 +362,93 @@ contract SyVaultFastRedeemTest is Base {
 
         // Cycle settled — bob can now open a new fast cycle.
         assertEq(uint8(vault.requestFastRedeemStatus(bob)), uint8(FastRedeemRequestStatus.Ok));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                   setFastRedeemEnabled — REVERT CASES
+    //////////////////////////////////////////////////////////////*/
+
+    function test_RevertWhen_FastRedeem_Disabled() external {
+        uint256 shares = _giveShares(alice, 100e18);
+
+        vm.prank(admin);
+        vault.setFastRedeemEnabled(false);
+
+        vm.startPrank(alice);
+        syShare.approve(address(vault), shares);
+        vm.expectRevert(SyVault__FastRedeemDisabled.selector);
+        hub.requestFastRedeem(VAULT_ID, shares, alice, alice);
+        vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                   setFastRedeemEnabled — HAPPY PATH
+    //////////////////////////////////////////////////////////////*/
+
+    function test_FastRedeem_DisableDoesNotAffectInFlight() external {
+        uint256 shares  = _giveShares(alice, 100e18);
+        uint256 cycleId = _requestFastRedeem(alice, shares);
+
+        // Disable after request is already in — in-flight cycle must complete normally.
+        vm.prank(admin);
+        vault.setFastRedeemEnabled(false);
+
+        _warpEpochs(FAST_REDEEM_LOCK_WINDOW);
+        _allocatorSettleCycle(cycleId, 100e18);
+
+        vm.prank(alice);
+        uint256 received = hub.redeem(VAULT_ID, shares, alice, alice);
+        assertGt(received, 0);
+    }
+
+    function test_FastRedeem_DisableDoesNotAffectCancel() external {
+        uint256 shares  = _giveShares(alice, 100e18);
+        uint256 cycleId = _requestFastRedeem(alice, shares);
+
+        vm.prank(admin);
+        vault.setFastRedeemEnabled(false);
+
+        // Cancel must still work — flag only blocks new requests.
+        vm.prank(alice);
+        hub.cancelFastRedeemRequest(VAULT_ID, cycleId, alice);
+
+        assertEq(syShare.balanceOf(alice), shares);
+    }
+
+    function test_FastRedeem_ReenableAfterDisable() external {
+        uint256 shares = _giveShares(alice, 100e18);
+
+        vm.prank(admin);
+        vault.setFastRedeemEnabled(false);
+
+        vm.startPrank(alice);
+        syShare.approve(address(vault), shares);
+        vm.expectRevert(SyVault__FastRedeemDisabled.selector);
+        hub.requestFastRedeem(VAULT_ID, shares, alice, alice);
+        vm.stopPrank();
+
+        vm.prank(admin);
+        vault.setFastRedeemEnabled(true);
+
+        uint256 cycleId = _requestFastRedeem(alice, shares);
+        assertGt(cycleId, 0);
+    }
+
+    function test_FastRedeemStatus_Disabled() external {
+        vm.prank(admin);
+        vault.setFastRedeemEnabled(false);
+
+        assertEq(
+            uint8(vault.requestFastRedeemStatus(alice)),
+            uint8(FastRedeemRequestStatus.Disabled)
+        );
+    }
+
+    function test_FastRedeemEnabled_view() external {
+        assertTrue(vault.fastRedeemEnabled());
+
+        vm.prank(admin);
+        vault.setFastRedeemEnabled(false);
+        assertFalse(vault.fastRedeemEnabled());
     }
 }

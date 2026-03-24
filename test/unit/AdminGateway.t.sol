@@ -314,7 +314,7 @@ contract AdminGatewayTest is Base {
         new LiquidityPool(address(asset), predicted); // pool at nonce+1
         SyVault v = new SyVault(
             address(asset), address(share2), address(pool),
-            address(hub), _gateway, keeper, allocator, feeRecip, INITIAL_PRICE
+            address(hub), _gateway, keeper, allocator, feeRecip, INITIAL_PRICE, true
         );
         return v;
     }

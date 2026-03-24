@@ -260,6 +260,12 @@ contract AdminGateway is TimelockController {
         ISyVault(_getSyVault(_vaultId)).setFastRedeemFeeWhitelist(_account, _approved);
     }
 
+    /// @notice Enable or disable fast redeem requests for a vault. onlyAdmin.
+    ///         In-flight cycles (cancel, settle, claim) are unaffected.
+    function setFastRedeemEnabled(uint256 _vaultId, bool _enabled) external onlyAdmin {
+        ISyVault(_getSyVault(_vaultId)).setFastRedeemEnabled(_enabled);
+    }
+
     /*//////////////////////////////////////////////////////////////
                     INTERNAL VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/

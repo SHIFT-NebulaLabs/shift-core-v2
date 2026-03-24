@@ -45,6 +45,7 @@ enum RedeemRequestStatus {
 enum FastRedeemRequestStatus {
     Ok,                        // Request can proceed.
     Paused,                    // Vault is fully paused or redeems are paused.
+    Disabled,                  // Fast redeem has been turned off by admin.
     AlreadyPending,            // Owner already has an active redeem request.
     FastCycleSettlementPending // Current fast cycle is past cutoff and not yet settled — wait for Allocator.
 }

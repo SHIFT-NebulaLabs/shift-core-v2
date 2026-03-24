@@ -27,6 +27,9 @@ error SyVault__DepositsPaused();
 /// @notice Thrown when redeems are paused.
 error SyVault__RedeemsPaused();
 
+/// @notice Thrown when requestFastRedeem() is called but fast redeem has been disabled by admin.
+error SyVault__FastRedeemDisabled();
+
 /// @notice Thrown when a deposit amount is below the minimum deposit threshold.
 error SyVault__BelowMinDeposit();
 

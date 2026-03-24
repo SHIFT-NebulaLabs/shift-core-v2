@@ -36,6 +36,7 @@ import {AdminGateway}  from "src/AdminGateway.sol";
 ///           VAULT_FEE_RECIPIENT    — fee recipient address
 ///           VAULT_INITIAL_PRICE    — initial share price in raw asset units
 ///                                    (e.g. 1000000 for 1.0 with USDC 6 decimals)
+///           VAULT_FAST_REDEEM_ENABLED — true to enable fast redeem at launch, false to disable
 ///           VAULT_OFT              — SyOFTAdapter address, or leave unset for single-chain
 ///
 /// @dev Run:
@@ -75,7 +76,8 @@ contract DeployVault is Script {
             vm.envAddress("VAULT_KEEPER"),
             vm.envAddress("VAULT_ALLOCATOR"),
             vm.envAddress("VAULT_FEE_RECIPIENT"),
-            vm.envUint("VAULT_INITIAL_PRICE")
+            vm.envUint("VAULT_INITIAL_PRICE"),
+            vm.envBool("VAULT_FAST_REDEEM_ENABLED")
         );
 
         vm.stopBroadcast();

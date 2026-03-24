@@ -8,6 +8,7 @@ import {
     SyVault__NoPendingRequest,
     SyVault__RedeemRequestAlreadyPending,
     SyVault__FastCycleNotSettled,
+    SyVault__FastRedeemDisabled,
     SyVault__CycleNotLocked,
     SyVault__CycleLocked,
     SyVault__CycleAlreadySettled,
@@ -136,6 +137,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         whenRedeemsNotPaused
         returns (uint256 requestId)
     {
+        if (!s_fastRedeemEnabled) revert SyVault__FastRedeemDisabled();
         if (_shares == 0) revert SyVault__ZeroAmount();
         // No active redeem of any kind allowed.
         if (s_activeRedeemCycleId[_controller] != 0) revert SyVault__RedeemRequestAlreadyPending();
@@ -509,6 +511,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     /// @notice Pre-flight eligibility check for fast redeem requests.
     function requestFastRedeemStatus(address _controller) external view returns (FastRedeemRequestStatus) {
         if (s_pausedFull || s_pausedRedeems) return FastRedeemRequestStatus.Paused;
+        if (!s_fastRedeemEnabled) return FastRedeemRequestStatus.Disabled;
         if (s_activeRedeemCycleId[_controller] != 0) return FastRedeemRequestStatus.AlreadyPending;
         if (s_currentFastCycleId != 0
             && currentEpoch() >= s_redeemCycles[s_currentFastCycleId].cutoffEpoch

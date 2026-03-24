@@ -177,6 +177,9 @@ interface ISyVault {
     /// @notice Emitted when a fast redeem fee whitelist entry is added or removed.
     event FastRedeemFeeWhitelistUpdated(address indexed account, bool approved);
 
+    /// @notice Emitted when fast redeem is enabled or disabled.
+    event FastRedeemEnabledUpdated(bool enabled);
+
     /*//////////////////////////////////////////////////////////////
                         EIP-7540 — WRITE
     //////////////////////////////////////////////////////////////*/
@@ -676,4 +679,10 @@ interface ISyVault {
     function setDepositWhitelist(address account, bool approved) external;
     /// @notice Add or remove an account from the fast redeem fee exempt whitelist. onlyAdminGateway.
     function setFastRedeemFeeWhitelist(address account, bool approved) external;
+    /// @notice Enable or disable fast redeem requests. onlyAdminGateway.
+    ///         In-flight cycles (cancel, settle, claim) are unaffected.
+    function setFastRedeemEnabled(bool enabled) external;
+
+    /// @notice True if fast redeem requests are currently accepted.
+    function fastRedeemEnabled() external view returns (bool);
 }

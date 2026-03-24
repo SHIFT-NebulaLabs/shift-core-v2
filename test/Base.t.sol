@@ -87,7 +87,8 @@ abstract contract Base is Test {
             keeper,
             allocator,
             feeRecip,
-            INITIAL_PRICE
+            INITIAL_PRICE,
+            true          // fastRedeemEnabled
         );
 
         assertEq(address(vault), predictedVault, "vault address prediction failed");
