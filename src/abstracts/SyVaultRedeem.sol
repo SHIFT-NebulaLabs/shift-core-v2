@@ -307,7 +307,9 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         if (_cycleType == CycleType.Fast) {
             if (s_currentFastCycleId == 0 || currentEpoch() >= s_redeemCycles[s_currentFastCycleId].cutoffEpoch) {
                 // Only one unsettled fast cycle at a time — Allocator handles one per day.
-                if (s_currentFastCycleId != 0 && !s_redeemCycles[s_currentFastCycleId].settled) {
+                if (s_currentFastCycleId != 0
+                    && !s_redeemCycles[s_currentFastCycleId].settled
+                    && s_redeemCycles[s_currentFastCycleId].shares > 0) {
                     revert SyVault__FastCycleNotSettled();
                 }
                 s_currentFastCycleId = s_cycleIdCounter++;
