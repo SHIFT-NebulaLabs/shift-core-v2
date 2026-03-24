@@ -65,6 +65,14 @@ contract SyVault is SyVaultRedeem {
     /// @dev controller → ordered list of epochs with pending/claimable deposits.
     mapping(address controller => uint256[]) private s_controllerDepositEpochs;
 
+    /// @dev controller → epoch → true if the epoch was ever pushed to s_controllerDepositEpochs.
+    ///      Prevents duplicate entries caused by cancel + re-deposit in the same epoch.
+    mapping(address controller => mapping(uint256 epoch => bool pushed)) private s_epochPushed;
+
+    /// @dev controller → index to start iterating s_controllerDepositEpochs from.
+    ///      Advanced past fully claimed settled entries to avoid O(n) iteration over dead epochs.
+    mapping(address controller => uint256 index) private s_depositClaimIndex;
+
     /// @dev epoch → share price at settlement (0 = not yet settled; set to >=1 at epochSettle).
     mapping(uint256 epoch => uint256 sharePrice) private s_epochSettlementPrice;
 
@@ -136,9 +144,11 @@ contract SyVault is SyVaultRedeem {
 
         requestId = currentEpoch();
 
-        // Track epoch and owner — Multiple deposits per (controller, epoch) are allowed from the same owner — assets accumulate.
-        if (s_pendingDeposits[_controller][requestId] == 0) {
+        // Track epoch and owner — multiple deposits per (controller, epoch) accumulate.
+        // s_epochPushed prevents duplicates if the controller cancels and re-deposits in the same epoch.
+        if (!s_epochPushed[_controller][requestId]) {
             s_controllerDepositEpochs[_controller].push(requestId);
+            s_epochPushed[_controller][requestId] = true;
             s_depositRequestOwner[_controller][requestId] = _owner;
         } else if (s_depositRequestOwner[_controller][requestId] != _owner) {
             revert SyVault__InvalidOwner();
@@ -214,8 +224,9 @@ contract SyVault is SyVaultRedeem {
                     INTERNAL HELPERS — deposit epoch iteration
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev Asset-based claim path for deposit(). Iterates epochs oldest-first, converts
-    ///      settled pending assets to shares. Pass _assets = 0 to claim everything.
+    /// @dev Asset-based claim path for deposit(). Iterates epochs oldest-first starting from
+    ///      s_depositClaimIndex to skip already-drained entries. Pass _assets = 0 to claim all.
+    ///      Advances s_depositClaimIndex past settled, fully-drained entries as it goes.
     function _consumeDepositEpochsByAssets(address _controller, uint256 _assets)
         internal
         returns (uint256 sharesOut)
@@ -224,13 +235,17 @@ contract SyVault is SyVaultRedeem {
         uint256 len              = epochs.length;
         uint256 remaining        = _assets;
 
-        for (uint256 i; i < len; ++i) {
+        for (uint256 i = s_depositClaimIndex[_controller]; i < len; ++i) {
             uint256 epoch       = epochs[i];
             uint256 settlePrice = s_epochSettlementPrice[epoch];
-            if (settlePrice == 0) continue; // not yet settled
+            if (settlePrice == 0) continue; // not yet settled — index cannot advance past unsettled entries
 
             uint256 pending = s_pendingDeposits[_controller][epoch];
-            if (pending == 0) continue; // already fully claimed
+            if (pending == 0) {
+                // Settled and fully claimed — advance start index past this dead entry.
+                if (i == s_depositClaimIndex[_controller]) s_depositClaimIndex[_controller] = i + 1;
+                continue;
+            }
 
             uint256 epochAssets = (_assets == 0)
                 ? pending
@@ -239,6 +254,11 @@ contract SyVault is SyVaultRedeem {
             sharesOut += (epochAssets * SHARE_PRICE_PRECISION) / settlePrice;
             s_pendingDeposits[_controller][epoch] -= epochAssets;
 
+            // If fully drained, advance start index.
+            if (s_pendingDeposits[_controller][epoch] == 0 && i == s_depositClaimIndex[_controller]) {
+                s_depositClaimIndex[_controller] = i + 1;
+            }
+
             if (_assets != 0) {
                 remaining -= epochAssets;
                 if (remaining == 0) break;
@@ -246,8 +266,9 @@ contract SyVault is SyVaultRedeem {
         }
     }
 
-    /// @dev Share-based claim path for mint(). Iterates epochs oldest-first, deducts
-    ///      assets corresponding to the requested share count. Returns assets consumed.
+    /// @dev Share-based claim path for mint(). Iterates epochs oldest-first starting from
+    ///      s_depositClaimIndex. Advances s_depositClaimIndex past settled, fully-drained entries.
+    ///      Returns assets consumed; returns 0 if the requested shares cannot be fully filled.
     function _consumeDepositEpochsByShares(address _controller, uint256 _sharesTarget)
         internal
         returns (uint256 assetsOut)
@@ -256,13 +277,17 @@ contract SyVault is SyVaultRedeem {
         uint256 len              = epochs.length;
         uint256 sharesRemaining  = _sharesTarget;
 
-        for (uint256 i; i < len; ++i) {
+        for (uint256 i = s_depositClaimIndex[_controller]; i < len; ++i) {
             uint256 epoch       = epochs[i];
             uint256 settlePrice = s_epochSettlementPrice[epoch];
             if (settlePrice == 0) continue;
 
             uint256 pending = s_pendingDeposits[_controller][epoch];
-            if (pending == 0) continue;
+            if (pending == 0) {
+                // Settled and fully claimed — advance start index past this dead entry.
+                if (i == s_depositClaimIndex[_controller]) s_depositClaimIndex[_controller] = i + 1;
+                continue;
+            }
 
             uint256 epochMaxShares = (pending * SHARE_PRICE_PRECISION) / settlePrice;
             uint256 epochShares    = epochMaxShares < sharesRemaining ? epochMaxShares : sharesRemaining;
@@ -275,6 +300,11 @@ contract SyVault is SyVaultRedeem {
             assetsOut       += epochAssets;
             sharesRemaining -= epochShares;
             s_pendingDeposits[_controller][epoch] -= epochAssets;
+
+            // If fully drained, advance start index.
+            if (s_pendingDeposits[_controller][epoch] == 0 && i == s_depositClaimIndex[_controller]) {
+                s_depositClaimIndex[_controller] = i + 1;
+            }
 
             if (sharesRemaining == 0) break;
         }

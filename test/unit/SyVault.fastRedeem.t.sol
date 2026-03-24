@@ -7,7 +7,7 @@ import {
     SyVault__ZeroAmount,
     SyVault__RedeemRequestAlreadyPending,
     SyVault__FastCycleNotSettled,
-    SyVault__CycleNotLocked
+    SyVault__CycleLocked
 } from "src/types/Errors.sol";
 import {FAST_REDEEM_CUTOFF, FAST_REDEEM_LOCK_WINDOW, BASIS_POINTS} from "src/types/Constants.sol";
 
@@ -56,21 +56,41 @@ contract SyVaultFastRedeemTest is Base {
         uint256 aliceShares = _giveShares(alice, 100e18);
         uint256 bobShares   = _giveShares(bob, 50e18);
 
-        uint256 firstCycleId = _requestFastRedeem(alice, aliceShares);
+        _requestFastRedeem(alice, aliceShares);
 
-        // Advance past fast cycle cutoff (12 epochs)
+        // Advance past fast cycle cutoff (12 epochs) — cycle still has alice's shares (non-empty)
         _warpEpochs(FAST_REDEEM_CUTOFF + 1);
 
-        // Cancel alice's request so she's free
-        vm.prank(alice);
-        hub.cancelFastRedeemRequest(VAULT_ID, firstCycleId, alice);
-
-        // Cycle is past cutoff but NOT settled — bob cannot open a new fast cycle
+        // Cycle is past cutoff, not settled, and has shares — bob cannot open a new fast cycle
         vm.startPrank(bob);
         syShare.approve(address(vault), bobShares);
         vm.expectRevert(SyVault__FastCycleNotSettled.selector);
         hub.requestFastRedeem(VAULT_ID, bobShares, bob, bob);
         vm.stopPrank();
+    }
+
+    function test_FastRedeem_DeadCycle_AllCancelledDoesNotBlock() external {
+        // A fast cycle where all requests were cancelled (shares == 0) must not block a new cycle.
+        uint256 aliceShares = _giveShares(alice, 100e18);
+        uint256 bobShares   = _giveShares(bob, 50e18);
+
+        uint256 firstCycleId = _requestFastRedeem(alice, aliceShares);
+
+        // Advance past fast cycle cutoff
+        _warpEpochs(FAST_REDEEM_CUTOFF + 1);
+
+        // Alice cancels — cycle now has shares == 0 (dead cycle)
+        vm.prank(alice);
+        hub.cancelFastRedeemRequest(VAULT_ID, firstCycleId, alice);
+
+        // Dead cycle must not block bob — new fast cycle opens immediately
+        vm.startPrank(bob);
+        syShare.approve(address(vault), bobShares);
+        uint256 newCycleId = hub.requestFastRedeem(VAULT_ID, bobShares, bob, bob);
+        vm.stopPrank();
+
+        assertGt(newCycleId, firstCycleId);
+        assertEq(vault.redeemCycleSchedule(newCycleId).shares, bobShares);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -148,7 +168,7 @@ contract SyVaultFastRedeemTest is Base {
         vm.warp(cycle.lockEpoch * 1 hours + 1);
 
         vm.prank(alice);
-        vm.expectRevert(SyVault__CycleNotLocked.selector);
+        vm.expectRevert(SyVault__CycleLocked.selector);
         hub.cancelFastRedeemRequest(VAULT_ID, cycleId, alice);
     }
 

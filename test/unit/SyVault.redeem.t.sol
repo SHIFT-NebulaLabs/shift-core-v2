@@ -8,6 +8,7 @@ import {
     SyVault__RedeemRequestAlreadyPending,
     SyVault__NoPendingRequest,
     SyVault__CycleNotLocked,
+    SyVault__CycleLocked,
     SyVault__CycleAlreadySettled,
     SyVault__NoClaimableRedeem,
     SyVault__RedeemsPaused,
@@ -175,7 +176,7 @@ contract SyVaultRedeemTest is Base {
         vm.warp(cycle.lockEpoch * 1 hours + 1); // past lock
 
         vm.prank(alice);
-        vm.expectRevert(SyVault__CycleNotLocked.selector);
+        vm.expectRevert(SyVault__CycleLocked.selector);
         hub.cancelRedeemRequest(VAULT_ID, cycleId, alice);
     }
 
