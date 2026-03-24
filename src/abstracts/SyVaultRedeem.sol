@@ -2,7 +2,7 @@
 pragma solidity 0.8.34;
 
 import {SyVaultEpoch} from "src/abstracts/SyVaultEpoch.sol";
-import {CycleState, CycleType, RedeemCycle} from "src/types/Types.sol";
+import {CycleState, CycleType, RedeemCycle, RedeemRequestStatus, FastRedeemRequestStatus} from "src/types/Types.sol";
 import {
     SyVault__ZeroAmount,
     SyVault__NoPendingRequest,
@@ -492,6 +492,26 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     /// @notice Full schedule data for a redeem cycle.
     function redeemCycleSchedule(uint256 _cycleId) external view returns (RedeemCycle memory) {
         return s_redeemCycles[_cycleId];
+    }
+
+    /// @notice Pre-flight eligibility check for normal redeem requests.
+    function requestRedeemStatus(address _controller) external view returns (RedeemRequestStatus) {
+        if (s_pausedFull || s_pausedRedeems) return RedeemRequestStatus.Paused;
+        if (s_activeRedeemCycleId[_controller] != 0) return RedeemRequestStatus.AlreadyPending;
+        if (s_currentNormalCycleId != 0 && currentEpoch() >= s_redeemCycles[s_currentNormalCycleId].cutoffEpoch)
+            return RedeemRequestStatus.PastCutoff;
+        return RedeemRequestStatus.Ok;
+    }
+
+    /// @notice Pre-flight eligibility check for fast redeem requests.
+    function requestFastRedeemStatus(address _controller) external view returns (FastRedeemRequestStatus) {
+        if (s_pausedFull || s_pausedRedeems) return FastRedeemRequestStatus.Paused;
+        if (s_activeRedeemCycleId[_controller] != 0) return FastRedeemRequestStatus.AlreadyPending;
+        if (s_currentFastCycleId != 0
+            && currentEpoch() >= s_redeemCycles[s_currentFastCycleId].cutoffEpoch
+            && !s_redeemCycles[s_currentFastCycleId].settled)
+            return FastRedeemRequestStatus.FastCycleSettlementPending;
+        return FastRedeemRequestStatus.Ok;
     }
 
 }

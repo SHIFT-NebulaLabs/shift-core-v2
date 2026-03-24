@@ -24,7 +24,7 @@ import {
     BASIS_POINTS,
     EPOCH_DURATION
 } from "src/types/Constants.sol";
-import {DepositRequestStatus, RedeemRequestStatus, FastRedeemRequestStatus} from "src/types/Types.sol";
+import {DepositRequestStatus} from "src/types/Types.sol";
 
 /// @title  syVault
 /// @author Shift Protocol
@@ -533,26 +533,6 @@ contract SyVault is SyVaultRedeem {
     function checkDepositAmount(uint256 _assets) external view returns (DepositRequestStatus) {
         if (s_minDeposit > 0 && _assets < s_minDeposit) return DepositRequestStatus.BelowMinDeposit;
         return DepositRequestStatus.Ok;
-    }
-
-    /// @inheritdoc ISyVault
-    function requestRedeemStatus(address _controller) external view returns (RedeemRequestStatus) {
-        if (s_pausedFull || s_pausedRedeems) return RedeemRequestStatus.Paused;
-        if (s_activeRedeemCycleId[_controller] != 0) return RedeemRequestStatus.AlreadyPending;
-        if (s_currentNormalCycleId != 0 && currentEpoch() >= s_redeemCycles[s_currentNormalCycleId].cutoffEpoch)
-            return RedeemRequestStatus.PastCutoff;
-        return RedeemRequestStatus.Ok;
-    }
-
-    /// @inheritdoc ISyVault
-    function requestFastRedeemStatus(address _controller) external view returns (FastRedeemRequestStatus) {
-        if (s_pausedFull || s_pausedRedeems) return FastRedeemRequestStatus.Paused;
-        if (s_activeRedeemCycleId[_controller] != 0) return FastRedeemRequestStatus.AlreadyPending;
-        if (s_currentFastCycleId != 0
-            && currentEpoch() >= s_redeemCycles[s_currentFastCycleId].cutoffEpoch
-            && !s_redeemCycles[s_currentFastCycleId].settled)
-            return FastRedeemRequestStatus.FastCycleSettlementPending;
-        return FastRedeemRequestStatus.Ok;
     }
 
     /*//////////////////////////////////////////////////////////////
