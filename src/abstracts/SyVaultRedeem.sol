@@ -9,6 +9,7 @@ import {
     SyVault__RedeemRequestAlreadyPending,
     SyVault__FastCycleNotSettled,
     SyVault__CycleNotLocked,
+    SyVault__CycleLocked,
     SyVault__CycleAlreadySettled,
     SyVault__NoClaimableRedeem
 } from "src/types/Errors.sol";
@@ -112,7 +113,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
 
         RedeemCycle storage cycle = s_redeemCycles[_requestId];
         if (cycle.cycleType != CycleType.Normal) revert SyVault__NoPendingRequest();
-        if (currentEpoch() >= cycle.lockEpoch)   revert SyVault__CycleNotLocked();
+        if (currentEpoch() >= cycle.lockEpoch)   revert SyVault__CycleLocked();
 
         address owner = s_redeemRequestOwner[_controller][_requestId];
 
@@ -160,7 +161,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
 
         RedeemCycle storage cycle = s_redeemCycles[_requestId];
         if (cycle.cycleType != CycleType.Fast)  revert SyVault__NoPendingRequest();
-        if (currentEpoch() >= cycle.lockEpoch)  revert SyVault__CycleNotLocked();
+        if (currentEpoch() >= cycle.lockEpoch)  revert SyVault__CycleLocked();
 
         address owner = s_redeemRequestOwner[_controller][_requestId];
 
