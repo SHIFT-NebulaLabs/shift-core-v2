@@ -45,7 +45,8 @@ abstract contract SyVaultEpoch is SyVaultBase {
     /// @dev Consecutive epochs where epochSettle skipped price update due to allocatorActive.
     uint256 internal s_allocatorActiveSkips;
 
-    /// @dev Last epoch at which performance or maintenance fee was collected.
+    /// @dev Last epoch at which the maintenance fee was collected.
+    ///      Drives the feeCollectionInterval cadence check in _collectFees().
     uint256 internal s_lastFeeCollectionEpoch;
 
     /*//////////////////////////////////////////////////////////////
