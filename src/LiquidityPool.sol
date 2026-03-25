@@ -20,7 +20,11 @@ import {
 /// @dev    Holds non-deployed assets. Fund-moving functions are nonReentrant.
 ///         Only the Allocator can call deployCapital() and returnCapital().
 ///         deployCapital() enforces allocatorAllowance cap to limit per-epoch exposure.
-///         returnCapital() must never revert if funds are already in the pool.
+///         There is no on-chain ordering enforcement between returnCapital() and settleRedeemBatch().
+///         The mandatory order (returnCapital first) is a bot-level rule — calling settleRedeemBatch()
+///         before funds arrive would settle at a rate the pool cannot cover.
+///         If funds are already in the pool (capital never deployed), the Allocator calls
+///         returnCapital(0) to emit CapitalReturned for the audit trail, then proceeds to settle.
 contract LiquidityPool is ReentrancyGuard, ILiquidityPool {
     using SafeERC20 for IERC20;
 

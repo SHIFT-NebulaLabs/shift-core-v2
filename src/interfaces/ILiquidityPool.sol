@@ -33,9 +33,14 @@ interface ILiquidityPool {
     function deployCapital(uint256 amount) external;
 
     /// @notice Receive assets from the Allocator back into the pool.
-    /// @dev    onlyAllocator. nonReentrant. Must never revert if funds are already in pool.
+    /// @dev    onlyAllocator. nonReentrant.
+    ///         There is no on-chain ordering enforcement with settleRedeemBatch() — the mandatory
+    ///         order (returnCapital first) is a bot-level rule to ensure funds are in the pool
+    ///         before shares are burned at the settled rate.
+    ///         Pass amount = 0 when funds are already in the pool (capital was never deployed):
+    ///         no transfer occurs but CapitalReturned is emitted for the audit trail.
     ///         Resets allocatorActive = false on the paired syVault after receipt.
-    /// @param  amount  Assets being returned.
+    /// @param  amount  Assets being returned. 0 if no transfer is needed.
     function returnCapital(uint256 amount) external;
 
     /// @notice Transfer assets from the pool to a recipient. Only callable by the paired syVault.
