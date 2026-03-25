@@ -653,6 +653,10 @@ interface ISyVault {
     /// @notice Set the maximum TVL cap (raw asset units). 0 = no cap. onlyAdminGateway.
     /// @dev    TVL uses TOTAL share supply (including redeem-locked shares), so the cap only
     ///         loosens after settleRedeemBatch() burns the redeemed shares — not after user claims.
+    ///         Setting maxTVL below the current TVL (sharePrice × totalSupply / SHARE_PRICE_PRECISION)
+    ///         causes maxDeposit() to return 0, blocking all new requestDeposit() calls until TVL
+    ///         drops below the cap or the cap is raised. Existing holders are unaffected.
+    ///         Prefer pauseDeposits() when the explicit intent is to suspend all new deposits.
     function setMaxTvl(uint256 maxTVL) external;
     /// @notice Set the minimum deposit amount (raw asset units). 0 = no minimum. onlyAdminGateway.
     function setMinDeposit(uint256 minDeposit) external;
