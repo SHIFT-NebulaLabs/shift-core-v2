@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {ERC20}         from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import {ISyShare}      from "src/interfaces/ISyShare.sol";
+import {ERC20}    from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ISyShare} from "src/interfaces/ISyShare.sol";
 import {SyShare__NotVault} from "src/types/Errors.sol";
 
 /// @title  syShare
@@ -14,7 +13,7 @@ import {SyShare__NotVault} from "src/types/Errors.sol";
 ///         No bridge logic — kept as a plain ERC-20 so it can be deployed on any chain.
 ///         syOFTAdapter (Chain A) wraps this token for LayerZero bridging.
 ///         vault() implements EIP-7575 bidirectional vault/share discovery.
-contract SyShare is ERC20, ERC20Burnable, ISyShare {
+contract SyShare is ERC20, ISyShare {
     /*//////////////////////////////////////////////////////////////
                            STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
