@@ -85,6 +85,12 @@ error SyVault__DepositNotAllowed();
 /// @notice Thrown when a fee parameter exceeds the allowed maximum (BASIS_POINTS).
 error SyVault__InvalidParam();
 
+/// @notice Thrown when a combination of fee parameters would reduce the share price to zero or below.
+error SyVault__InvalidFeeConfig();
+
+/// @notice Thrown when the computed settlement price is zero, which would corrupt share accounting.
+error SyVault__ZeroSettlementPrice();
+
 /// @notice Thrown when a zero address is passed where a valid address is required.
 error SyVault__ZeroAddress();
 

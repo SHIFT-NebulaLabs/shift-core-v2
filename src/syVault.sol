@@ -17,11 +17,14 @@ import {
     SyVault__NoPendingRequest,
     SyVault__NoClaimableDeposit,
     SyVault__AsyncVault,
-    SyVault__InvalidParam
+    SyVault__InvalidParam,
+    SyVault__InvalidFeeConfig,
+    SyVault__ZeroSettlementPrice
 } from "src/types/Errors.sol";
 import {
     SHARE_PRICE_PRECISION,
     BASIS_POINTS,
+    EPOCHS_PER_YEAR,
     EPOCH_DURATION
 } from "src/types/Constants.sol";
 import {DepositRequestStatus} from "src/types/Types.sol";
@@ -119,8 +122,11 @@ contract SyVault is SyVaultRedeem {
     /// @dev Called by SyVaultEpoch.epochSettle() after effectivePrice is determined.
     ///      Marks the epoch settled and deducts pendingAssets from s_totalPendingDeposits.
     function _onEpochSettle(uint256 _epochToSettle, uint256 _effectivePrice) internal override {
-        // Mark the epoch settled — use effectivePrice, or sentinel 1 if price is 0 (edge case).
-        s_epochSettlementPrice[_epochToSettle] = _effectivePrice > 0 ? _effectivePrice : 1;
+        // A zero settlement price would corrupt deposit claims (shares = assets / price = ∞).
+        // This is defense-in-depth: setter validation makes this unreachable under correct config.
+        // Recovery: GUARDIAN/ADMIN can call epochSettle(0) to reuse the previous non-zero price.
+        if (_effectivePrice == 0) revert SyVault__ZeroSettlementPrice();
+        s_epochSettlementPrice[_epochToSettle] = _effectivePrice;
         uint256 pendingAssets = s_pendingDepositsByEpoch[_epochToSettle];
         if (pendingAssets > 0) {
             s_totalPendingDeposits -= pendingAssets;
@@ -407,6 +413,12 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function setMaintenanceFeeInterval(uint256 _interval) external onlyAdminGateway {
+        // Cross-param guard: bps × interval must be < BASIS_POINTS × EPOCHS_PER_YEAR.
+        // A product >= this threshold means the fee per interval equals or exceeds the full price,
+        // which would reduce the share price to zero on the next collection.
+        if (_interval > 0 && s_maintenanceFeeBps * _interval >= BASIS_POINTS * EPOCHS_PER_YEAR) {
+            revert SyVault__InvalidFeeConfig();
+        }
         emit MaintenanceFeeIntervalUpdated(s_maintenanceFeeInterval, _interval);
         s_maintenanceFeeInterval = _interval;
     }
@@ -420,7 +432,12 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function setMaintenanceFeeBps(uint256 _bps) external onlyAdminGateway {
-        if (_bps > BASIS_POINTS) revert SyVault__InvalidParam();
+        // Disallow 100% (>= BASIS_POINTS) — a single collection at 100% bps would zero the price.
+        if (_bps >= BASIS_POINTS) revert SyVault__InvalidParam();
+        // Cross-param guard: see setMaintenanceFeeInterval for rationale.
+        if (_bps > 0 && _bps * s_maintenanceFeeInterval >= BASIS_POINTS * EPOCHS_PER_YEAR) {
+            revert SyVault__InvalidFeeConfig();
+        }
         emit MaintenanceFeeBpsUpdated(s_maintenanceFeeBps, _bps);
         s_maintenanceFeeBps = _bps;
     }

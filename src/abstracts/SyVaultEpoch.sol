@@ -8,7 +8,9 @@ import {
     SyVault__EpochNotElapsed,
     SyVault__SharePriceDeltaExceeded,
     SyVault__RangeTooLarge,
-    SyVault__InvalidRange
+    SyVault__InvalidRange,
+    SyVault__InvalidFeeConfig,
+    SyVault__ZeroSettlementPrice
 } from "src/types/Errors.sol";
 import {
     ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS,
@@ -108,7 +110,11 @@ abstract contract SyVaultEpoch is SyVaultBase {
             return _prev;
         }
 
-        if (_prev > 0 && s_maxSharePriceDelta > 0) {
+        if (s_maxSharePriceDelta > 0) {
+            // Defense-in-depth: _prev is zero only if the vault was misconfigured at construction
+            // (initialSharePrice = 0) while a delta guard is active. Revert so the stale-price
+            // path (epochSettle(0)) is used until the state is corrected.
+            if (_prev == 0) revert SyVault__ZeroSettlementPrice();
             uint256 delta = _proposed > _prev
                 ? ((_proposed - _prev) * BASIS_POINTS) / _prev
                 : ((_prev - _proposed) * BASIS_POINTS) / _prev;
@@ -158,7 +164,11 @@ abstract contract SyVaultEpoch is SyVaultBase {
             uint256 priceBefore  = _price;
             uint256 feeDeduction = (_price * s_maintenanceFeeBps * s_maintenanceFeeInterval)
                 / (BASIS_POINTS * EPOCHS_PER_YEAR);
-            _price = _price > feeDeduction ? _price - feeDeduction : 0;
+            // Defense-in-depth: setter validation (setMaintenanceFeeBps / setMaintenanceFeeInterval)
+            // ensures feeDeduction < _price under valid config. If this reverts, the fee config is
+            // corrupt. Recovery: GUARDIAN/ADMIN calls epochSettle(0) to reuse the previous price.
+            if (feeDeduction >= _price) revert SyVault__InvalidFeeConfig();
+            _price -= feeDeduction;
 
             emit MaintenanceFeeCollected(
                 _epoch,
