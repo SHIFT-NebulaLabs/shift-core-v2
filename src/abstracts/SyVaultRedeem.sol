@@ -267,12 +267,12 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         // Compute gross assets the cycle must yield to cover _assets + fee.
         uint256 grossAssets;
         uint256 fee;
-        if (cycle.cycleType == CycleType.Fast && s_fastRedeemFeeBps > 0
+        if (cycle.cycleType == CycleType.Fast && cycle.feeBps > 0
             && !s_fastRedeemFeeWhitelist[_controller])
         {
             // grossAssets = netAssets / (1 - feeBps/BASIS_POINTS)
-            grossAssets = (_assets * BASIS_POINTS + BASIS_POINTS - s_fastRedeemFeeBps - 1)
-                / (BASIS_POINTS - s_fastRedeemFeeBps);
+            grossAssets = (_assets * BASIS_POINTS + BASIS_POINTS - cycle.feeBps - 1)
+                / (BASIS_POINTS - cycle.feeBps);
             fee = grossAssets - _assets;
         } else {
             grossAssets = _assets;
@@ -323,7 +323,8 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
                     lockEpoch:      epoch + FAST_REDEEM_LOCK_WINDOW,
                     settled:        false,
                     returnedAmount: 0,
-                    cycleRate:      0
+                    cycleRate:      0,
+                    feeBps:         s_fastRedeemFeeBps
                 });
             }
             cycleId = s_currentFastCycleId;
@@ -338,7 +339,8 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
                     lockEpoch:      epoch + NORMAL_REDEEM_LOCK_WINDOW,
                     settled:        false,
                     returnedAmount: 0,
-                    cycleRate:      0
+                    cycleRate:      0,
+                    feeBps:         0
                 });
             }
             cycleId = s_currentNormalCycleId;
@@ -364,10 +366,11 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         grossAssets = (_shares * cycle.cycleRate) / SHARE_PRICE_PRECISION;
 
         // Deduct fast redeem fee per-controller at claim time.
-        if (cycle.cycleType == CycleType.Fast && s_fastRedeemFeeBps > 0
+        // cycle.feeBps is snapshotted at cycle creation — immune to admin fee changes mid-cycle.
+        if (cycle.cycleType == CycleType.Fast && cycle.feeBps > 0
             && !s_fastRedeemFeeWhitelist[_controller])
         {
-            fee = (grossAssets * s_fastRedeemFeeBps) / BASIS_POINTS;
+            fee = (grossAssets * cycle.feeBps) / BASIS_POINTS;
         }
         netAssets = grossAssets - fee;
     }
@@ -428,7 +431,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         uint256 gross = (shares * cycle.cycleRate) / SHARE_PRICE_PRECISION;
         // Deduct fast redeem fee unless whitelisted.
         if (s_fastRedeemFeeWhitelist[_controller]) return gross;
-        return gross - (gross * s_fastRedeemFeeBps / BASIS_POINTS);
+        return gross - (gross * cycle.feeBps / BASIS_POINTS);
     }
 
     /// @notice Active redeem request for a controller.

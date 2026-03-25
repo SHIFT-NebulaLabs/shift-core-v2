@@ -73,6 +73,7 @@ struct RedeemCycle {
     bool      settled;        // True after settleRedeemBatch() completes.
     uint256   returnedAmount; // Assets returned by Allocator via returnCapital().
     uint256   cycleRate;      // returnedAmount / shares, scaled by SHARE_PRICE_PRECISION.
+    uint256   feeBps;         // Fast redeem fee snapshotted at cycle creation. 0 for normal cycles.
 }
 
 /// @notice Snapshot of share price data stored per epoch in the ring buffer.
