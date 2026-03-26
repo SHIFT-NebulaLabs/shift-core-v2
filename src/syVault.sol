@@ -383,7 +383,9 @@ contract SyVault is SyVaultRedeem {
     /// @inheritdoc ISyVault
     function setAllocator(address _allocator) external onlyAdminGateway {
         emit AllocatorUpdated(s_allocator, _allocator);
-        s_allocator = _allocator;
+        s_allocator            = _allocator;
+        s_allocatorActive      = false;
+        s_allocatorActiveSkips = 0;
     }
 
     /// @inheritdoc ISyVault
