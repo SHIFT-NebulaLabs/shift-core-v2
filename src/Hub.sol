@@ -108,7 +108,7 @@ contract Hub is IHub {
         address _controller,
         address _owner
     ) external returns (uint256 requestId) {
-        _requireActive(_vaultId);
+        _requireActiveOrDeprecated(_vaultId);
         _requireOwnerOrOperator(_vaultId, _controller, _owner);
         return ISyVault(_getSyVault(_vaultId)).requestFastRedeem(_shares, _controller, _owner);
     }
