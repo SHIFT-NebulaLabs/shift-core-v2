@@ -160,7 +160,7 @@ contract HubTest is Base {
 
         _giveAssets(alice, amount);
         vm.prank(alice);
-        uint256 reqId = hub.requestDeposit(VAULT_ID, amount, alice, alice);
+        hub.requestDeposit(VAULT_ID, amount, alice, alice);
 
         _settleEpoch(INITIAL_PRICE);
 

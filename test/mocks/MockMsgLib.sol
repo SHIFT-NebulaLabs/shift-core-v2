@@ -78,7 +78,7 @@ contract MockMsgLib is ERC165, ISendLib {
         }));
 
         encodedPacket = PacketV1Codec.encode(_packet);
-        fee = MessagingFee(0, 0);
+        fee = MessagingFee({nativeFee: 0, lzTokenFee: 0});
     }
 
     function quote(
@@ -86,7 +86,7 @@ contract MockMsgLib is ERC165, ISendLib {
         bytes calldata,
         bool
     ) external pure returns (MessagingFee memory) {
-        return MessagingFee(0, 0);
+        return MessagingFee({nativeFee: 0, lzTokenFee: 0});
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -103,7 +103,7 @@ contract MockMsgLib is ERC165, ISendLib {
         uint256 len = pendingPackets.length;
         for (uint256 i; i < len; ++i) {
             StoredPacket memory pkt = pendingPackets[i];
-            Origin memory origin = Origin(pkt.srcEid, pkt.sender, pkt.nonce);
+            Origin memory origin = Origin({srcEid: pkt.srcEid, sender: pkt.sender, nonce: pkt.nonce});
             bytes memory payloadBytes = abi.encodePacked(pkt.guid, pkt.message);
 
             // MockMsgLib is msg.sender here → must be registered as receive lib on _dst

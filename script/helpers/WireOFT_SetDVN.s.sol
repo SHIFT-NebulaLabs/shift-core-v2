@@ -71,7 +71,7 @@ uint32 constant CONFIG_TYPE_ULN      = 2;
 // ─── Shared helper ────────────────────────────────────────────────────────────
 
 library DVNHelper {
-    function buildRequiredDVNs(uint256 count, address dvn1, address dvn2)
+    function buildRequiredDvns(uint256 count, address dvn1, address dvn2)
         internal
         pure
         returns (address[] memory dvns)
@@ -93,7 +93,7 @@ library DVNHelper {
         returns (UlnConfig memory uln)
     {
         require(dvnCount <= type(uint8).max, "DVNHelper: dvnCount overflow");
-        address[] memory requiredDVNs = buildRequiredDVNs(dvnCount, dvn1, dvn2);
+        address[] memory requiredDVNs = buildRequiredDvns(dvnCount, dvn1, dvn2);
         address[] memory optionalDVNs = new address[](0);
         uln = UlnConfig({
             confirmations:        confs,
@@ -127,12 +127,12 @@ contract WireOFT_SetDVN_Home is Script {
         // A -> B: send config (Executor + ULN) on home chain
         ExecutorConfig memory exec = ExecutorConfig({maxMessageSize: 10_000, executor: executor});
         SetConfigParam[] memory sendParams = new SetConfigParam[](2);
-        sendParams[0] = SetConfigParam(peerEid, CONFIG_TYPE_EXECUTOR, abi.encode(exec));
-        sendParams[1] = SetConfigParam(peerEid, CONFIG_TYPE_ULN,      abi.encode(uln));
+        sendParams[0] = SetConfigParam({eid: peerEid, configType: CONFIG_TYPE_EXECUTOR, config: abi.encode(exec)});
+        sendParams[1] = SetConfigParam({eid: peerEid, configType: CONFIG_TYPE_ULN,      config: abi.encode(uln)});
 
         // B -> A: receive config (ULN only) on home chain
         SetConfigParam[] memory recvParams = new SetConfigParam[](1);
-        recvParams[0] = SetConfigParam(peerEid, CONFIG_TYPE_ULN, abi.encode(uln));
+        recvParams[0] = SetConfigParam({eid: peerEid, configType: CONFIG_TYPE_ULN, config: abi.encode(uln)});
 
         vm.startBroadcast();
         ILayerZeroEndpointV2(endpoint).setConfig(adapter, sendLib,        sendParams);
@@ -170,13 +170,13 @@ contract WireOFT_SetDVN_Remote is Script {
 
         // A -> B: receive config (ULN only) on remote chain
         SetConfigParam[] memory recvParams = new SetConfigParam[](1);
-        recvParams[0] = SetConfigParam(adapterEid, CONFIG_TYPE_ULN, abi.encode(uln));
+        recvParams[0] = SetConfigParam({eid: adapterEid, configType: CONFIG_TYPE_ULN, config: abi.encode(uln)});
 
         // B -> A: send config (Executor + ULN) on remote chain
         ExecutorConfig memory exec = ExecutorConfig({maxMessageSize: 10_000, executor: remoteExec});
         SetConfigParam[] memory sendParams = new SetConfigParam[](2);
-        sendParams[0] = SetConfigParam(adapterEid, CONFIG_TYPE_EXECUTOR, abi.encode(exec));
-        sendParams[1] = SetConfigParam(adapterEid, CONFIG_TYPE_ULN,      abi.encode(uln));
+        sendParams[0] = SetConfigParam({eid: adapterEid, configType: CONFIG_TYPE_EXECUTOR, config: abi.encode(exec)});
+        sendParams[1] = SetConfigParam({eid: adapterEid, configType: CONFIG_TYPE_ULN,      config: abi.encode(uln)});
 
         vm.startBroadcast();
         ILayerZeroEndpointV2(endpoint).setConfig(peer, receiveLib,    recvParams);
