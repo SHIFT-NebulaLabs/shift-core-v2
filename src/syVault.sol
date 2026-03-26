@@ -495,6 +495,8 @@ contract SyVault is SyVaultRedeem {
         view
         returns (uint256 assets)
     {
+        // EIP-7540: pending and claimable are mutually exclusive. Once settled, return 0.
+        if (s_epochSettlementPrice[_requestId] > 0) return 0;
         return s_pendingDeposits[_controller][_requestId];
     }
 
