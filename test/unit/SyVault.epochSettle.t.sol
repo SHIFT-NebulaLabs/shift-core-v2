@@ -150,8 +150,8 @@ contract SyVaultEpochSettleTest is Base {
         // Settle epoch 1
         _settleEpoch(INITIAL_PRICE);
 
-        // pendingDepositRequest is only cleared when claimed, not at settlement
-        assertEq(vault.pendingDepositRequest(bobReqId, bob), b);
+        // EIP-7540: after settlement, pendingDepositRequest returns 0 (mutually exclusive with claimable).
+        assertEq(vault.pendingDepositRequest(bobReqId, bob), 0);
         assertEq(vault.claimableDepositRequest(bobReqId, bob), b);
     }
 

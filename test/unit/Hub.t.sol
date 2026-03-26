@@ -61,7 +61,7 @@ contract HubTest is Base {
         assertGt(cycleId, 0);
     }
 
-    function test_requestFastRedeem_requiresActive() external {
+    function test_requestFastRedeem_allowsDeprecated() external {
         uint256 shares = _giveShares(alice, 100e18);
 
         vm.prank(admin);
@@ -69,9 +69,9 @@ contract HubTest is Base {
 
         vm.startPrank(alice);
         syShare.approve(address(vault), shares);
-        vm.expectRevert(Hub__VaultNotActive.selector);
-        hub.requestFastRedeem(VAULT_ID, shares, alice, alice);
+        uint256 cycleId = hub.requestFastRedeem(VAULT_ID, shares, alice, alice);
         vm.stopPrank();
+        assertGt(cycleId, 0);
     }
 
     function test_cancelDepositRequest_anyState() external {

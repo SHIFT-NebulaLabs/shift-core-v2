@@ -150,6 +150,10 @@ interface ISyVault {
     /// @notice Emitted when the minimum deposit amount is changed (0 = no minimum).
     event MinDepositUpdated(uint256 oldMinDeposit, uint256 newMinDeposit);
 
+    /// @notice Emitted when the minimum redeem share amount is changed (0 = no minimum).
+    ///         Auto-zeroed by AdminGateway when vault transitions to Deprecated.
+    event MinRedeemUpdated(uint256 oldMinRedeem, uint256 newMinRedeem);
+
     /// @notice Emitted when the max share price delta per epoch is changed.
     event MaxSharePriceDeltaUpdated(uint256 oldDelta, uint256 newDelta);
 
@@ -608,6 +612,9 @@ interface ISyVault {
     ///         The cap therefore reflects full economic exposure, not just freely tradable shares.
     function maxTvl()                  external view returns (uint256);
     function minDeposit()              external view returns (uint256);
+    /// @notice Minimum share amount for requestRedeem and requestFastRedeem.
+    ///         Auto-calculated at deployment as 10 ** (18 − assetDecimals). 0 in deprecated state.
+    function minRedeem()               external view returns (uint256);
     function maxSharePriceDelta()      external view returns (uint256);
     function maxStalePriceEpochs()     external view returns (uint256);
     function maintenanceFeeInterval()  external view returns (uint256);
@@ -674,6 +681,9 @@ interface ISyVault {
     function setMaxTvl(uint256 maxTVL) external;
     /// @notice Set the minimum deposit amount (raw asset units). 0 = no minimum. onlyAdminGateway.
     function setMinDeposit(uint256 minDeposit) external;
+    /// @notice Set the minimum redeem share amount. 0 = no minimum. onlyAdminGateway.
+    ///         Auto-zeroed by AdminGateway on transition to Deprecated.
+    function setMinRedeem(uint256 minRedeem) external;
     /// @notice Set max allowed share price move per epoch in basis points. onlyAdminGateway.
     function setMaxSharePriceDelta(uint256 delta) external;
     /// @notice Set max epochs the keeper can be behind before deposits are blocked. onlyAdminGateway.

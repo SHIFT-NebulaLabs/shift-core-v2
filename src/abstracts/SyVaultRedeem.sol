@@ -5,6 +5,7 @@ import {SyVaultEpoch} from "src/abstracts/SyVaultEpoch.sol";
 import {CycleState, CycleType, RedeemCycle, RedeemRequestStatus, FastRedeemRequestStatus} from "src/types/Types.sol";
 import {
     SyVault__ZeroAmount,
+    SyVault__BelowMinRedeem,
     SyVault__NoPendingRequest,
     SyVault__RedeemRequestAlreadyPending,
     SyVault__FastCycleNotSettled,
@@ -89,6 +90,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         returns (uint256 requestId)
     {
         if (_shares == 0) revert SyVault__ZeroAmount();
+        if (s_minRedeem > 0 && _shares < s_minRedeem) revert SyVault__BelowMinRedeem();
         // One active redeem per controller at a time.
         if (s_activeRedeemCycleId[_controller] != 0) revert SyVault__RedeemRequestAlreadyPending();
 
@@ -139,6 +141,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     {
         if (!s_fastRedeemEnabled) revert SyVault__FastRedeemDisabled();
         if (_shares == 0) revert SyVault__ZeroAmount();
+        if (s_minRedeem > 0 && _shares < s_minRedeem) revert SyVault__BelowMinRedeem();
         // No active redeem of any kind allowed.
         if (s_activeRedeemCycleId[_controller] != 0) revert SyVault__RedeemRequestAlreadyPending();
 

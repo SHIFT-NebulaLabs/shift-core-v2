@@ -120,6 +120,10 @@ contract AdminGateway is TimelockController {
         VaultState _current = i_addressRegistry.getVaultState(_vaultId);
         _validateTransition(_current, _newState);
         i_addressRegistry.setVaultState(_vaultId, _newState);
+        // On deprecation: lift minRedeem so dust holders can exit during wind-down.
+        if (_newState == VaultState.Deprecated) {
+            ISyVault(_getSyVault(_vaultId)).setMinRedeem(0);
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -205,6 +209,12 @@ contract AdminGateway is TimelockController {
     /// @notice Set minimum deposit amount for a vault (raw asset units). 0 = no minimum. onlyAdmin.
     function setMinDeposit(uint256 _vaultId, uint256 _minDeposit) external onlyAdmin {
         ISyVault(_getSyVault(_vaultId)).setMinDeposit(_minDeposit);
+    }
+
+    /// @notice Set minimum redeem share amount for a vault. 0 = no minimum. onlyAdmin.
+    ///         Auto-zeroed when vault transitions to Deprecated — see setVaultState.
+    function setMinRedeem(uint256 _vaultId, uint256 _minRedeem) external onlyAdmin {
+        ISyVault(_getSyVault(_vaultId)).setMinRedeem(_minRedeem);
     }
 
     /// @notice Set max share price move per epoch (basis points). onlyAdmin.

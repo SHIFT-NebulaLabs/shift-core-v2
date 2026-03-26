@@ -115,10 +115,15 @@ contract SyVault is SyVaultRedeem {
         bool    _fastRedeemEnabled
     ) SyVaultBase(_asset, _share, _liquidityPool, _hub, _adminGateway, _keeper, _allocator, _feeRecipient) {
         if (_initialSharePrice == 0) revert SyVault__InvalidParam();
-        s_sharePrice       = _initialSharePrice;
-        s_hwm              = _initialSharePrice;
-        s_cycleIdCounter   = 1; // 0 reserved as "no active redeem" sentinel
+        s_sharePrice        = _initialSharePrice;
+        s_hwm               = _initialSharePrice;
+        s_cycleIdCounter    = 1; // 0 reserved as "no active redeem" sentinel
         s_fastRedeemEnabled = _fastRedeemEnabled;
+        // Precision floor: minimum share amount that maps to at least 1 raw asset unit.
+        // Prevents dust redeem cycles that would settle with cycleRate = 0 on low-decimal assets.
+        // Admin can override via setMinRedeem(). Auto-zeroed on deprecation via AdminGateway.
+        uint8 assetDecimals = IERC20Metadata(address(_asset)).decimals();
+        s_minRedeem = assetDecimals < 18 ? 10 ** (18 - assetDecimals) : 1;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -314,6 +319,10 @@ contract SyVault is SyVaultRedeem {
             if (epochAssets > pending) epochAssets = pending;
             epochShares = (epochAssets * SHARE_PRICE_PRECISION) / settlePrice;
 
+            // Cap after round-trip: rounding up epochAssets can inflate epochShares above
+            // sharesRemaining on low-decimal assets (e.g. USDC), causing underflow.
+            if (epochShares > sharesRemaining) epochShares = sharesRemaining;
+
             assetsOut       += epochAssets;
             sharesRemaining -= epochShares;
             s_pendingDeposits[_controller][epoch] -= epochAssets;
@@ -408,6 +417,12 @@ contract SyVault is SyVaultRedeem {
     function setMinDeposit(uint256 _minDeposit) external onlyAdminGateway {
         emit MinDepositUpdated(s_minDeposit, _minDeposit);
         s_minDeposit = _minDeposit;
+    }
+
+    /// @inheritdoc ISyVault
+    function setMinRedeem(uint256 _minRedeem) external onlyAdminGateway {
+        emit MinRedeemUpdated(s_minRedeem, _minRedeem);
+        s_minRedeem = _minRedeem;
     }
 
     /// @inheritdoc ISyVault
@@ -700,6 +715,9 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function minDeposit() external view returns (uint256) { return s_minDeposit; }
+
+    /// @inheritdoc ISyVault
+    function minRedeem() external view returns (uint256) { return s_minRedeem; }
 
     /// @inheritdoc ISyVault
     function maxSharePriceDelta() external view returns (uint256) { return s_maxSharePriceDelta; }

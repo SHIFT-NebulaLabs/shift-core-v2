@@ -33,6 +33,9 @@ error SyVault__FastRedeemDisabled();
 /// @notice Thrown when a deposit amount is below the minimum deposit threshold.
 error SyVault__BelowMinDeposit();
 
+/// @notice Thrown when a redeem share amount is below the minimum redeem threshold.
+error SyVault__BelowMinRedeem();
+
 /// @notice Thrown when requestFastRedeem() is called after cutoff but the current fast cycle is not yet settled.
 error SyVault__FastCycleNotSettled();
 

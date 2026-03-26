@@ -213,10 +213,10 @@ contract SyVaultDepositTest is Base {
 
         _settleEpoch(INITIAL_PRICE);
 
-        // After settlement but before claim: pendingDepositRequest still equals amount
-        // (the contract only clears it during claim, not at settlement).
+        // EIP-7540: pending and claimable are mutually exclusive.
+        // After settlement, pendingDepositRequest returns 0; claimableDepositRequest is set.
         assertEq(vault.claimableDepositRequest(reqId, alice), amount);
-        assertEq(vault.pendingDepositRequest(reqId, alice), amount);
+        assertEq(vault.pendingDepositRequest(reqId, alice), 0);
 
         vm.prank(alice);
         uint256 shares = hub.deposit(VAULT_ID, 0, alice, alice); // 0 = claim all
