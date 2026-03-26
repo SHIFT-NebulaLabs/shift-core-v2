@@ -574,8 +574,22 @@ interface ISyVault {
     /// @notice Investable liquidity: LiquidityPool.balance − redeemDue − claimableRedeemAssets.
     function investableLiquidity() external view returns (uint256);
 
+    /// @notice Decompose pool balance into keeper-usable TVL components.
+    /// @dev    Replaces the investableLiquidity() call in the Keeper's share price formula.
+    ///         poolContrib  — pool assets not committed to any user: add to Equity for TVL.
+    ///         stratReserved — committed assets already deployed to strategy (Equity already
+    ///                         includes them): subtract from Equity to avoid double-counting.
+    ///         Keeper formula:
+    ///           (poolContrib, stratReserved) = tvlComponents()
+    ///           TVL        = Equity + poolContrib − stratReserved
+    ///           sharePrice = (TVL × SHARE_PRICE_PRECISION) / effectiveSupply()
+    function tvlComponents() external view returns (uint256 poolContrib, uint256 stratReserved);
+
     /// @notice Total assets across all pending (pre-settlement) deposit requests.
     function pendingDepositAssets() external view returns (uint256);
+
+    /// @notice Total assets settled at epochSettle() but not yet claimed by depositors.
+    function totalClaimableDeposits() external view returns (uint256);
 
     /// @notice Total assets across all settled-but-unclaimed redeem positions.
     function claimableRedeemAssets() external view returns (uint256);

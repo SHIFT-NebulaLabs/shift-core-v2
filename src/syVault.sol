@@ -82,6 +82,11 @@ contract SyVault is SyVaultRedeem {
     /// @dev Total pending deposit assets across all epochs.
     uint256 private s_totalPendingDeposits;
 
+    /// @dev Total settled-but-unclaimed deposit assets across all epochs.
+    ///      Incremented at epochSettle when pending moves to claimable; decremented as users claim.
+    ///      Used by tvlComponents() to correctly exclude committed assets from pool contribution.
+    uint256 private s_totalClaimableDeposits;
+
     /*//////////////////////////////////////////////////////////////
               CONSTRUCTOR (called by concrete child contracts)
     //////////////////////////////////////////////////////////////*/
@@ -129,7 +134,8 @@ contract SyVault is SyVaultRedeem {
         s_epochSettlementPrice[_epochToSettle] = _effectivePrice;
         uint256 pendingAssets = s_pendingDepositsByEpoch[_epochToSettle];
         if (pendingAssets > 0) {
-            s_totalPendingDeposits -= pendingAssets;
+            s_totalPendingDeposits   -= pendingAssets;
+            s_totalClaimableDeposits += pendingAssets;
         }
     }
 
@@ -262,6 +268,7 @@ contract SyVault is SyVaultRedeem {
 
             sharesOut += (epochAssets * SHARE_PRICE_PRECISION) / settlePrice;
             s_pendingDeposits[_controller][epoch] -= epochAssets;
+            s_totalClaimableDeposits              -= epochAssets;
 
             // If fully drained, advance start index.
             if (s_pendingDeposits[_controller][epoch] == 0 && i == s_depositClaimIndex[_controller]) {
@@ -309,6 +316,7 @@ contract SyVault is SyVaultRedeem {
             assetsOut       += epochAssets;
             sharesRemaining -= epochShares;
             s_pendingDeposits[_controller][epoch] -= epochAssets;
+            s_totalClaimableDeposits              -= epochAssets;
 
             // If fully drained, advance start index.
             if (s_pendingDeposits[_controller][epoch] == 0 && i == s_depositClaimIndex[_controller]) {
@@ -640,8 +648,29 @@ contract SyVault is SyVaultRedeem {
     }
 
     /// @inheritdoc ISyVault
+    function tvlComponents() external view returns (uint256 poolContrib, uint256 stratReserved) {
+        uint256 pool     = ILiquidityPool(i_liquidityPool).balance();
+        uint256 reserved = _redeemDue()
+                         + s_claimableRedeemAssets
+                         + s_totalPendingDeposits
+                         + s_totalClaimableDeposits;
+        if (pool >= reserved) {
+            poolContrib   = pool - reserved;
+            stratReserved = 0;
+        } else {
+            poolContrib   = 0;
+            stratReserved = reserved - pool;
+        }
+    }
+
+    /// @inheritdoc ISyVault
     function pendingDepositAssets() external view returns (uint256) {
         return s_totalPendingDeposits;
+    }
+
+    /// @inheritdoc ISyVault
+    function totalClaimableDeposits() external view returns (uint256) {
+        return s_totalClaimableDeposits;
     }
 
     /*//////////////////////////////////////////////////////////////
