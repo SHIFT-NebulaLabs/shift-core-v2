@@ -509,11 +509,12 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     }
 
     /// @notice Pre-flight eligibility check for normal redeem requests.
+    /// @dev    PastCutoff is intentionally not returned: requestRedeem() never reverts past cutoff —
+    ///         _openOrReuseCycle() simply opens the next cycle. Returning PastCutoff would be a
+    ///         false negative that blocks valid transactions on integrating frontends.
     function requestRedeemStatus(address _controller) external view returns (RedeemRequestStatus) {
         if (s_pausedFull || s_pausedRedeems) return RedeemRequestStatus.Paused;
         if (s_activeRedeemCycleId[_controller] != 0) return RedeemRequestStatus.AlreadyPending;
-        if (s_currentNormalCycleId != 0 && currentEpoch() >= s_redeemCycles[s_currentNormalCycleId].cutoffEpoch)
-            return RedeemRequestStatus.PastCutoff;
         return RedeemRequestStatus.Ok;
     }
 
