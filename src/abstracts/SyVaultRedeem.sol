@@ -521,7 +521,8 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         if (s_activeRedeemCycleId[_controller] != 0) return FastRedeemRequestStatus.AlreadyPending;
         if (s_currentFastCycleId != 0
             && currentEpoch() >= s_redeemCycles[s_currentFastCycleId].cutoffEpoch
-            && !s_redeemCycles[s_currentFastCycleId].settled)
+            && !s_redeemCycles[s_currentFastCycleId].settled
+            && s_redeemCycles[s_currentFastCycleId].shares > 0)
             return FastRedeemRequestStatus.FastCycleSettlementPending;
         return FastRedeemRequestStatus.Ok;
     }
