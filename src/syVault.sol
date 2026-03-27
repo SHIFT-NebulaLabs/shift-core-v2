@@ -20,7 +20,8 @@ import {
     SyVault__AsyncVault,
     SyVault__InvalidParam,
     SyVault__InvalidFeeConfig,
-    SyVault__ZeroSettlementPrice
+    SyVault__ZeroSettlementPrice,
+    SyVault__InvalidOverrideEpochs
 } from "src/types/Errors.sol";
 import {
     SHARE_PRICE_PRECISION,
@@ -117,8 +118,9 @@ contract SyVault is SyVaultRedeem {
         if (_initialSharePrice == 0) revert SyVault__InvalidParam();
         s_sharePrice        = _initialSharePrice;
         s_hwm               = _initialSharePrice;
-        s_cycleIdCounter    = 1; // 0 reserved as "no active redeem" sentinel
-        s_fastRedeemEnabled = _fastRedeemEnabled;
+        s_cycleIdCounter                 = 1; // 0 reserved as "no active redeem" sentinel
+        s_fastRedeemEnabled              = _fastRedeemEnabled;
+        s_allocatorActiveOverrideEpochs  = 2;
         // Precision floor: minimum share amount that maps to at least 1 raw asset unit.
         // Prevents dust redeem cycles that would settle with cycleRate = 0 on low-decimal assets.
         // Admin can override via setMinRedeem(). Auto-zeroed on deprecation via AdminGateway.
@@ -423,6 +425,13 @@ contract SyVault is SyVaultRedeem {
     function setMinRedeem(uint256 _minRedeem) external onlyAdminGateway {
         emit MinRedeemUpdated(s_minRedeem, _minRedeem);
         s_minRedeem = _minRedeem;
+    }
+
+    /// @inheritdoc ISyVault
+    function setAllocatorActiveOverrideEpochs(uint256 _epochs) external onlyAdminGateway {
+        if (_epochs == 0 || _epochs > 24) revert SyVault__InvalidOverrideEpochs();
+        emit AllocatorActiveOverrideEpochsUpdated(s_allocatorActiveOverrideEpochs, _epochs);
+        s_allocatorActiveOverrideEpochs = _epochs;
     }
 
     /// @inheritdoc ISyVault

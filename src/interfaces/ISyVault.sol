@@ -154,6 +154,9 @@ interface ISyVault {
     ///         Auto-zeroed by AdminGateway when vault transitions to Deprecated.
     event MinRedeemUpdated(uint256 oldMinRedeem, uint256 newMinRedeem);
 
+    /// @notice Emitted when allocatorActiveOverrideEpochs is changed. Range: [1, 24].
+    event AllocatorActiveOverrideEpochsUpdated(uint256 oldEpochs, uint256 newEpochs);
+
     /// @notice Emitted when the max share price delta per epoch is changed.
     event MaxSharePriceDeltaUpdated(uint256 oldDelta, uint256 newDelta);
 
@@ -565,6 +568,9 @@ interface ISyVault {
     /// @notice True if the Allocator is currently operating. Keeper uses previous price when true.
     function allocatorActive() external view returns (bool);
 
+    /// @notice Consecutive allocatorActive epochs before the Keeper overrides the price. Range: [1, 24].
+    function allocatorActiveOverrideEpochs() external view returns (uint256);
+
     /// @notice Total assets reserved for locked redeem cycles not yet settled.
     function redeemDue() external view returns (uint256);
 
@@ -635,9 +641,13 @@ interface ISyVault {
 
     /// @notice Signal that the allocator is mid-operation (bridging, deploying to strategy).
     /// @dev    onlyAllocator. When true, epochSettle skips share price update for up to
-    ///         ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS before overriding with proposed price.
+    ///         allocatorActiveOverrideEpochs before overriding with proposed price.
     ///         Call with false once the operation completes and NAV is accurate again.
     function setAllocatorActive(bool active) external;
+
+    /// @notice Set the number of consecutive allocatorActive epochs before the Keeper overrides.
+    /// @dev    onlyAdminGateway. Valid range: [1, 24]. Reverts with SyVault__InvalidOverrideEpochs otherwise.
+    function setAllocatorActiveOverrideEpochs(uint256 epochs) external;
 
     /*//////////////////////////////////////////////////////////////
                ADMIN GATEWAY — PAUSE

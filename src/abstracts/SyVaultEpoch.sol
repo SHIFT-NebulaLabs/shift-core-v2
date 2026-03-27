@@ -13,7 +13,6 @@ import {
     SyVault__ZeroSettlementPrice
 } from "src/types/Errors.sol";
 import {
-    ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS,
     MAX_HISTORY_RANGE,
     BASIS_POINTS,
     SHARE_PRICE_PRECISION,
@@ -58,7 +57,7 @@ abstract contract SyVaultEpoch is SyVaultBase {
     /// @notice Settle pending deposits and update share price. Called every epoch by Keeper.
     /// @dev    Keeper can call with any price. AdminGateway can call with 0 only (GUARDIAN/ADMIN emergency).
     ///         Skips price update if allocatorActive = true (uses previous price).
-    ///         After ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS consecutive skips, proceeds with proposed price.
+    ///         After s_allocatorActiveOverrideEpochs consecutive skips, proceeds with proposed price.
     ///         Collects performance fee (mints shares if sharePrice > Hwm).
     ///         Collects maintenance fee every feeCollectionInterval epochs (deducts from TVL).
     ///         Emits SharePriceUpdated, PerformanceFeeCollected, and conditionally MaintenanceFeeCollected.
@@ -101,7 +100,7 @@ abstract contract SyVaultEpoch is SyVaultBase {
         if (_proposed == 0) return _prev;
 
         if (s_allocatorActive) {
-            if (s_allocatorActiveSkips >= ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS) {
+            if (s_allocatorActiveSkips >= s_allocatorActiveOverrideEpochs) {
                 s_allocatorActive      = false;
                 s_allocatorActiveSkips = 0;
                 return _proposed;
@@ -184,7 +183,7 @@ abstract contract SyVaultEpoch is SyVaultBase {
 
     /// @notice Signal that the allocator is mid-operation (bridging, deploying to strategy).
     /// @dev    onlyAllocator. When true, epochSettle skips share price update for up to
-    ///         ALLOCATOR_ACTIVE_OVERRIDE_EPOCHS before overriding with proposed price.
+    ///         s_allocatorActiveOverrideEpochs before overriding with proposed price.
     ///         Call with false once the operation completes and NAV is accurate again.
     function setAllocatorActive(bool _active) external onlyAllocator {
         s_allocatorActive      = _active;
@@ -277,6 +276,11 @@ abstract contract SyVaultEpoch is SyVaultBase {
     /// @notice True if the Allocator is currently operating.
     function allocatorActive() external view returns (bool) {
         return s_allocatorActive;
+    }
+
+    /// @notice Number of consecutive allocatorActive epochs before the Keeper overrides the price.
+    function allocatorActiveOverrideEpochs() external view returns (uint256) {
+        return s_allocatorActiveOverrideEpochs;
     }
 
 }

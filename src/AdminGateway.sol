@@ -217,6 +217,11 @@ contract AdminGateway is TimelockController {
         ISyVault(_getSyVault(_vaultId)).setMinRedeem(_minRedeem);
     }
 
+    /// @notice Set allocatorActiveOverrideEpochs for a vault. Valid range: [1, 24]. onlyAdmin.
+    function setAllocatorActiveOverrideEpochs(uint256 _vaultId, uint256 _epochs) external onlyAdmin {
+        ISyVault(_getSyVault(_vaultId)).setAllocatorActiveOverrideEpochs(_epochs);
+    }
+
     /// @notice Set max share price move per epoch (basis points). onlyAdmin.
     function setMaxSharePriceDelta(uint256 _vaultId, uint256 _delta) external onlyAdmin {
         ISyVault(_getSyVault(_vaultId)).setMaxSharePriceDelta(_delta);

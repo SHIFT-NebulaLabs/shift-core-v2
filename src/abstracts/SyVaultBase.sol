@@ -77,6 +77,7 @@ abstract contract SyVaultBase is ReentrancyGuard, ISyVault {
     uint256 internal s_maxTVL;
     uint256 internal s_minDeposit;
     uint256 internal s_minRedeem;
+    uint256 internal s_allocatorActiveOverrideEpochs;
     uint256 internal s_maxSharePriceDelta;      // basis points
     uint256 internal s_maxStalePriceEpochs;
     uint256 internal s_maintenanceFeeInterval;  // epochs between maintenance fee collections

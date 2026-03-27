@@ -94,6 +94,9 @@ error SyVault__InvalidFeeConfig();
 /// @notice Thrown when the computed settlement price is zero, which would corrupt share accounting.
 error SyVault__ZeroSettlementPrice();
 
+/// @notice Thrown when setAllocatorActiveOverrideEpochs receives a value outside [1, 24].
+error SyVault__InvalidOverrideEpochs();
+
 /// @notice Thrown when a zero address is passed where a valid address is required.
 error SyVault__ZeroAddress();
 
