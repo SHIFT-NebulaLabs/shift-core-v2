@@ -13,7 +13,8 @@ import {
     SyVault__CycleNotLocked,
     SyVault__CycleLocked,
     SyVault__CycleAlreadySettled,
-    SyVault__NoClaimableRedeem
+    SyVault__NoClaimableRedeem,
+    SyVault__InvalidParam
 } from "src/types/Errors.sol";
 import {
     NORMAL_REDEEM_CUTOFF,
@@ -233,6 +234,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         nonReentrant
         returns (uint256 assets)
     {
+        if (_receiver == address(0)) revert SyVault__InvalidParam();
         if (_shares == 0) revert SyVault__ZeroAmount();
 
         (uint256 grossAssets, uint256 fee, uint256 netAssets) = _claimRedeemAssets(_controller, _shares);
@@ -257,6 +259,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         nonReentrant
         returns (uint256 shares)
     {
+        if (_receiver == address(0)) revert SyVault__InvalidParam();
         if (_assets == 0) revert SyVault__ZeroAmount();
 
         uint256 cycleId       = s_activeRedeemCycleId[_controller];
