@@ -448,6 +448,11 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function setMaintenanceFeeInterval(uint256 _interval) external onlyAdminGateway {
+        // Hard cap: interval cannot exceed one year. Defense-in-depth — when maintenanceFeeBps = 0
+        // the cross-param guard below evaluates to 0 and passes for any interval, so an extreme
+        // value could be set and later combined with a non-zero bps to produce a near-full-price
+        // deduction in one collection. The cap makes this setter self-sufficient (F-01).
+        if (_interval > EPOCHS_PER_YEAR) revert SyVault__InvalidParam();
         // Cross-param guard: bps × interval must be < BASIS_POINTS × EPOCHS_PER_YEAR.
         // A product >= this threshold means the fee per interval equals or exceeds the full price,
         // which would reduce the share price to zero on the next collection.

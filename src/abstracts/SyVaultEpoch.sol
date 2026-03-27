@@ -132,9 +132,12 @@ abstract contract SyVaultEpoch is SyVaultBase {
         // Hwm comparison is never affected by operational costs.
         uint256 hwm            = s_hwm;
         uint256 feeSharesMinted;
-        if (_price > hwm && s_performanceFeeBps > 0) {
+        if (_price > hwm) {
             uint256 grossPrice = _price; // pre-dilution price — used for HWM and event
-            if (supply > 0) {
+            // Only collect fee shares when performance fee is enabled and supply > 0.
+            // HWM always advances to track ATH regardless of fee setting — prevents retroactive
+            // fee collection on gains that accrued while the fee was disabled (F-02).
+            if (s_performanceFeeBps > 0 && supply > 0) {
                 // Dilution model: feeShares = (price - Hwm) * supply * feeBps / (price * BASIS_POINTS)
                 feeSharesMinted = ((_price - hwm) * supply * s_performanceFeeBps)
                     / (_price * BASIS_POINTS);
