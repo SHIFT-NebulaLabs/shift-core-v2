@@ -165,7 +165,7 @@ contract VerifyDeployment is Script {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    function _check(string memory _label, bool _pass) internal view {
+    function _check(string memory _label, bool _pass) internal pure {
         if (_pass) {
             console.log("[OK]  ", _label);
         } else {

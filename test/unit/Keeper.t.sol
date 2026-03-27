@@ -13,7 +13,7 @@ contract KeeperTest is Base {
                     SHARE PRICE FORMULA PRECISION
     //////////////////////////////////////////////////////////////*/
 
-    function test_sharePriceFormula_initialState() external {
+    function test_sharePriceFormula_initialState() external view {
         // At initial state: totalSupply = 0, investableLiquidity = 0.
         // effectiveSupply = 0 → keeper cannot compute a valid price. First epoch is special.
         assertEq(syShare.totalSupply(),      0);
