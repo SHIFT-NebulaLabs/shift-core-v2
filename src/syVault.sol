@@ -585,7 +585,7 @@ contract SyVault is SyVaultRedeem {
             available = type(uint256).max;
         } else {
             uint256 tvl  = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION;
-            uint256 used = tvl + s_totalPendingDeposits;
+            uint256 used = tvl + s_totalPendingDeposits + s_totalClaimableDeposits;
             available = used >= s_maxTVL ? 0 : s_maxTVL - used;
         }
         // If remaining room is below minDeposit, no deposit can succeed — signal unavailable.
@@ -620,7 +620,7 @@ contract SyVault is SyVaultRedeem {
             if (stale >= s_maxStalePriceEpochs) return DepositRequestStatus.StalePrice;
         }
         if (s_maxTVL > 0) {
-            uint256 used = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION + s_totalPendingDeposits;
+            uint256 used = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION + s_totalPendingDeposits + s_totalClaimableDeposits;
             if (used >= s_maxTVL) return DepositRequestStatus.TVLExceeded;
         }
         return DepositRequestStatus.Ok;
