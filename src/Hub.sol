@@ -41,28 +41,28 @@ contract Hub is IHub {
     /// @inheritdoc IHub
     function requestDeposit(uint256 _vaultId, uint256 _assets, address _controller, address _owner) external returns (uint256 requestId) {
         _requireActive(_vaultId);
-        _requireOwnerOrOperator(_vaultId, _controller, _owner);
+        _requireCallerAuthorized(_vaultId, _controller, _owner);
         return ISyVault(_getSyVault(_vaultId)).requestDeposit(_assets, _controller, _owner);
     }
 
     /// @inheritdoc IHub
     function cancelDepositRequest(uint256 _vaultId, uint256 _requestId, address _controller) external {
         // Cancel always available — no vault state check.
-        _requireOwnerOrOperator(_vaultId, _controller, _controller);
+        _requireCallerAuthorized(_vaultId, _controller, _controller);
         ISyVault(_getSyVault(_vaultId)).cancelDepositRequest(_requestId, _controller);
     }
 
     /// @inheritdoc IHub
     function deposit(uint256 _vaultId, uint256 _assets, address _receiver, address _controller) external returns (uint256 shares) {
         _requireActiveOrDeprecated(_vaultId);
-        _requireOwnerOrOperator(_vaultId, _controller, _controller);
+        _requireCallerAuthorized(_vaultId, _controller, _controller);
         return ISyVault(_getSyVault(_vaultId)).deposit(_assets, _receiver, _controller);
     }
 
     /// @inheritdoc IHub
     function mint(uint256 _vaultId, uint256 _shares, address _receiver, address _controller) external returns (uint256 assets) {
         _requireActiveOrDeprecated(_vaultId);
-        _requireOwnerOrOperator(_vaultId, _controller, _controller);
+        _requireCallerAuthorized(_vaultId, _controller, _controller);
         return ISyVault(_getSyVault(_vaultId)).mint(_shares, _receiver, _controller);
     }
 
@@ -73,27 +73,27 @@ contract Hub is IHub {
     /// @inheritdoc IHub
     function requestRedeem(uint256 _vaultId, uint256 _shares, address _controller, address _owner) external returns (uint256 requestId) {
         _requireActiveOrDeprecated(_vaultId);
-        _requireOwnerOrOperator(_vaultId, _controller, _owner);
+        _requireCallerAuthorized(_vaultId, _controller, _owner);
         return ISyVault(_getSyVault(_vaultId)).requestRedeem(_shares, _controller, _owner);
     }
 
     /// @inheritdoc IHub
     function cancelRedeemRequest(uint256 _vaultId, uint256 _requestId, address _controller) external {
-        _requireOwnerOrOperator(_vaultId, _controller, _controller);
+        _requireCallerAuthorized(_vaultId, _controller, _controller);
         ISyVault(_getSyVault(_vaultId)).cancelRedeemRequest(_requestId, _controller);
     }
 
     /// @inheritdoc IHub
     function redeem(uint256 _vaultId, uint256 _shares, address _receiver, address _controller) external returns (uint256 assets) {
         _requireActiveOrDeprecated(_vaultId);
-        _requireOwnerOrOperator(_vaultId, _controller, _controller);
+        _requireCallerAuthorized(_vaultId, _controller, _controller);
         return ISyVault(_getSyVault(_vaultId)).redeem(_shares, _receiver, _controller);
     }
 
     /// @inheritdoc IHub
     function withdraw(uint256 _vaultId, uint256 _assets, address _receiver, address _controller) external returns (uint256 shares) {
         _requireActiveOrDeprecated(_vaultId);
-        _requireOwnerOrOperator(_vaultId, _controller, _controller);
+        _requireCallerAuthorized(_vaultId, _controller, _controller);
         return ISyVault(_getSyVault(_vaultId)).withdraw(_assets, _receiver, _controller);
     }
 
@@ -109,13 +109,13 @@ contract Hub is IHub {
         address _owner
     ) external returns (uint256 requestId) {
         _requireActiveOrDeprecated(_vaultId);
-        _requireOwnerOrOperator(_vaultId, _controller, _owner);
+        _requireCallerAuthorized(_vaultId, _controller, _owner);
         return ISyVault(_getSyVault(_vaultId)).requestFastRedeem(_shares, _controller, _owner);
     }
 
     /// @inheritdoc IHub
     function cancelFastRedeemRequest(uint256 _vaultId, uint256 _requestId, address _controller) external {
-        _requireOwnerOrOperator(_vaultId, _controller, _controller);
+        _requireCallerAuthorized(_vaultId, _controller, _controller);
         ISyVault(_getSyVault(_vaultId)).cancelFastRedeemRequest(_requestId, _controller);
     }
 
@@ -154,17 +154,19 @@ contract Hub is IHub {
         }
     }
 
-    /// @dev Revert if msg.sender is not the owner and not an approved operator of the owner.
-    ///      Per EIP-7540:
-    ///        - requestDeposit / requestRedeem : operator must be approved by owner
-    ///          (the address whose assets / shares are moved).
-    ///        - deposit / mint / redeem / withdraw / cancel : called with _owner = _controller,
-    ///          so the check collapses to isOperator(controller, msg.sender) — correct per standard.
-    function _requireOwnerOrOperator(uint256 _vaultId, address /* _controller */, address _owner) internal view {
+    /// @dev Revert if msg.sender is not authorized to act on behalf of both _owner and _controller.
+    ///      Per EIP-7540, _owner authorization: msg.sender == _owner OR isOperator(_owner, msg.sender).
+    ///      Additionally, _controller authorization is required to prevent griefing: an attacker could
+    ///      pass a victim as _controller while being their own _owner, binding the victim's request slot
+    ///      and blocking their deposit for the epoch. Requiring controller auth closes this vector.
+    ///      For deposit/mint/redeem/withdraw/cancel, _owner == _controller so both checks collapse to one.
+    function _requireCallerAuthorized(uint256 _vaultId, address _controller, address _owner) internal view {
+        ISyVault vault = ISyVault(_getSyVault(_vaultId));
         if (msg.sender != _owner) {
-            if (!ISyVault(_getSyVault(_vaultId)).isOperator(_owner, msg.sender)) {
-                revert Hub__NotAuthorized();
-            }
+            if (!vault.isOperator(_owner, msg.sender)) revert Hub__NotAuthorized();
+        }
+        if (msg.sender != _controller) {
+            if (!vault.isOperator(_controller, msg.sender)) revert Hub__NotAuthorized();
         }
     }
 
