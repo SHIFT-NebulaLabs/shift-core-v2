@@ -201,6 +201,13 @@ contract AdminGateway is TimelockController {
               PARAMETER SETTERS — ADMIN (immediate)
     //////////////////////////////////////////////////////////////*/
 
+    /// @notice Store or update a singleton contract address in the registry. onlyAdmin.
+    /// @param  _key   bytes32 identifier — use CONTRACT_* constants from Constants.sol.
+    /// @param  _addr  New address (must not be address(0)).
+    function setContractAddress(bytes32 _key, address _addr) external onlyAdmin {
+        i_addressRegistry.setContractAddress(_key, _addr);
+    }
+
     /// @notice Set maxTVL cap for a vault. onlyAdmin.
     function setMaxTvl(uint256 _vaultId, uint256 _maxTVL) external onlyAdmin {
         ISyVault(_getSyVault(_vaultId)).setMaxTvl(_maxTVL);
