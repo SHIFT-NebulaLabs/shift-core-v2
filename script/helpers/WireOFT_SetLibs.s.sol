@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {Script, console} from "forge-std/Script.sol";
+import {console} from "forge-std/Script.sol";
+import {LZResolver} from "script/helpers/LZResolver.s.sol";
 
 import {ILayerZeroEndpointV2}
     from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
@@ -25,15 +26,13 @@ uint256 constant GRACE_PERIOD = 0;
 ///             setSendLibrary   peer → adapterEid    (B -> A send)
 ///
 ///         Required .env:
-///           LZ_ENDPOINT       — LayerZero EndpointV2 address (same on all EVM chains)
 ///           ADAPTER           — SyOFTAdapter address (home chain)
 ///           PEER              — SySharePeer address  (remote chain)
 ///           ADAPTER_EID       — endpoint ID of the home chain
 ///           PEER_EID          — endpoint ID of the remote chain
-///           SEND_LIB          — SendUln302 on HOME chain   (A -> B send)
-///           HOME_RECEIVE_LIB  — ReceiveUln302 on HOME chain (B -> A receive)
-///           RECEIVE_LIB       — ReceiveUln302 on REMOTE chain (A -> B receive)
-///           REMOTE_SEND_LIB   — SendUln302 on REMOTE chain  (B -> A send)
+///
+///         Endpoint and lib addresses are resolved from the lz-address-book via block.chainid.
+///         Falls back to .env (LZ_ENDPOINT, SEND_LIB, RECEIVE_LIB) for unsupported chains.
 ///
 /// @dev Run:
 ///   forge script script/helpers/WireOFT_SetLibs.s.sol:WireOFT_SetLibs_Home   --rpc-url $HOME_RPC   --broadcast --interactives 1
@@ -41,13 +40,15 @@ uint256 constant GRACE_PERIOD = 0;
 
 // ─── Home chain: both libs for home-side (A -> B send, B -> A receive) ────────
 
-contract WireOFT_SetLibs_Home is Script {
+contract WireOFT_SetLibs_Home is LZResolver {
     function run() external {
-        address endpoint       = vm.envAddress("LZ_ENDPOINT");
+        _initResolver();
+
         address adapter        = vm.envAddress("ADAPTER");
         uint32  peerEid        = uint32(vm.envUint("PEER_EID"));
-        address sendLib        = vm.envAddress("SEND_LIB");
-        address homeReceiveLib = vm.envAddress("HOME_RECEIVE_LIB");
+        address endpoint       = _endpoint();
+        address sendLib        = _sendLib();
+        address homeReceiveLib = _receiveLib();
 
         vm.startBroadcast();
         ILayerZeroEndpointV2(endpoint).setSendLibrary(adapter, peerEid, sendLib);
@@ -55,6 +56,7 @@ contract WireOFT_SetLibs_Home is Script {
         vm.stopBroadcast();
 
         console.log("=== LIBS SET (home chain) ===");
+        console.log("Address book     :", _useAddressBook);
         console.log("Adapter          :", adapter);
         console.log("PeerEid          :", peerEid);
         console.log("SendLib (A->B)   :", sendLib);
@@ -64,13 +66,15 @@ contract WireOFT_SetLibs_Home is Script {
 
 // ─── Remote chain: both libs for remote-side (A -> B receive, B -> A send) ───
 
-contract WireOFT_SetLibs_Remote is Script {
+contract WireOFT_SetLibs_Remote is LZResolver {
     function run() external {
-        address endpoint      = vm.envAddress("LZ_ENDPOINT");
+        _initResolver();
+
         address peer          = vm.envAddress("PEER");
         uint32  adapterEid    = uint32(vm.envUint("ADAPTER_EID"));
-        address receiveLib    = vm.envAddress("RECEIVE_LIB");
-        address remoteSendLib = vm.envAddress("REMOTE_SEND_LIB");
+        address endpoint      = _endpoint();
+        address receiveLib    = _receiveLib();
+        address remoteSendLib = _sendLib();
 
         vm.startBroadcast();
         ILayerZeroEndpointV2(endpoint).setReceiveLibrary(peer, adapterEid, receiveLib, GRACE_PERIOD);
@@ -78,6 +82,7 @@ contract WireOFT_SetLibs_Remote is Script {
         vm.stopBroadcast();
 
         console.log("=== LIBS SET (remote chain) ===");
+        console.log("Address book     :", _useAddressBook);
         console.log("Peer             :", peer);
         console.log("AdapterEid       :", adapterEid);
         console.log("ReceiveLib (A->B):", receiveLib);

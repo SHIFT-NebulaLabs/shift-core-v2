@@ -15,6 +15,7 @@ remappings = [
     "solidity-bytes-utils/=lib/solidity-bytes-utils/",
     "forge-std/=lib/forge-std/src/",
     "@layerzerolabs/test-devtools-evm-foundry/=lib/devtools/packages/test-devtools-evm-foundry/",
+    "lz-address-book/=lib/lz-address-book/src/",
 ]
 
 [profile.default.fuzz]

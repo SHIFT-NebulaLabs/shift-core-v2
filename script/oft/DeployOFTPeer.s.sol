@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {Script, console} from "forge-std/Script.sol";
+import {console} from "forge-std/Script.sol";
+import {LZResolver} from "script/helpers/LZResolver.s.sol";
 
 import {SySharePeer} from "src/crosschain/SySharePeer.sol";
 import {ICreateX}    from "script/interfaces/ICreateX.sol";
@@ -35,19 +36,23 @@ address constant CREATEX = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
 ///           SYSHARE            — SyShare ERC-20 address on the HOME chain (used only for salt derivation)
 ///           VAULT_SHARE_NAME   — token name, must match home chain (e.g. "Shift Yield Share USDC")
 ///           VAULT_SHARE_SYMBOL — token symbol, must match home chain (e.g. "syUSDC")
-///           LZ_ENDPOINT        — LayerZero EndpointV2 address on THIS remote chain
 ///           OFT_OWNER          — multisig that controls peer config
+///
+///         LZ_ENDPOINT is resolved from the lz-address-book via block.chainid.
+///         Falls back to .env (LZ_ENDPOINT) for unsupported chains.
 ///
 /// @dev Run (on each remote chain):
 ///   forge script script/oft/DeployOFTPeer.s.sol --rpc-url $REMOTE_RPC --broadcast --verify --interactives 1
 
-contract DeployOFTPeer is Script {
+contract DeployOFTPeer is LZResolver {
     function run() external {
+        _initResolver();
+
         address deployer     = vm.envAddress("DEPLOYER_ADDRESS");
         address syShare      = vm.envAddress("SYSHARE");
         string memory name   = vm.envString("VAULT_SHARE_NAME");
         string memory symbol = vm.envString("VAULT_SHARE_SYMBOL");
-        address lzEndpoint   = vm.envAddress("LZ_ENDPOINT");
+        address lzEndpoint   = _endpoint();
         address oftOwner     = vm.envAddress("OFT_OWNER");
 
         // First 20 bytes = deployer (CreateX front-run protection).

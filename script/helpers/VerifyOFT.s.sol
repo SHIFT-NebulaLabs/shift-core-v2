@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {Script, console} from "forge-std/Script.sol";
+import {console} from "forge-std/Script.sol";
+import {LZResolver} from "script/helpers/LZResolver.s.sol";
 
 import {SyOFTAdapter} from "src/crosschain/SyOFTAdapter.sol";
 import {SySharePeer}  from "src/crosschain/SySharePeer.sol";
@@ -20,13 +21,15 @@ interface IEndpointDelegate {
 ///           VerifyOFT_Remote — checks peer on REMOTE chain
 ///
 ///         Required .env:
-///           LZ_ENDPOINT    — LayerZero EndpointV2 address (same on all EVM chains)
 ///           ADAPTER        — SyOFTAdapter address (home chain)
 ///           PEER           — SySharePeer address  (remote EVM chain)
 ///           ADAPTER_EID    — LayerZero endpoint ID of the home chain
 ///           PEER_EID       — LayerZero endpoint ID of the remote chain
 ///           SYSHARE        — expected syShare token (adapter side)
 ///           OFT_OWNER      — expected owner and delegate on both contracts
+///
+///         LZ_ENDPOINT is resolved from the lz-address-book via block.chainid.
+///         Falls back to .env (LZ_ENDPOINT) for unsupported chains.
 ///
 ///         Optional .env:
 ///           PEER_BYTES32       — raw bytes32 peer address for non-EVM peers
@@ -37,9 +40,11 @@ interface IEndpointDelegate {
 ///   forge script script/helpers/VerifyOFT.s.sol:VerifyOFT_Home   --rpc-url $HOME_RPC
 ///   forge script script/helpers/VerifyOFT.s.sol:VerifyOFT_Remote --rpc-url $REMOTE_RPC
 
-contract VerifyOFT_Home is Script {
-    function run() external view {
-        address endpoint = vm.envAddress("LZ_ENDPOINT");
+contract VerifyOFT_Home is LZResolver {
+    function run() external {
+        _initResolver();
+
+        address endpoint = _endpoint();
         address adapter  = vm.envAddress("ADAPTER");
         address peer     = vm.envAddress("PEER");
         uint32  peerEid  = uint32(vm.envUint("PEER_EID"));
@@ -52,6 +57,7 @@ contract VerifyOFT_Home is Script {
 
         console.log("======================================");
         console.log("  OFT VERIFY - HOME (adapter)        ");
+        console.log("  Address book:", _useAddressBook);
         console.log("======================================");
 
         SyOFTAdapter adapterContract = SyOFTAdapter(adapter);
@@ -89,9 +95,11 @@ contract VerifyOFT_Home is Script {
     }
 }
 
-contract VerifyOFT_Remote is Script {
-    function run() external view {
-        address endpoint   = vm.envAddress("LZ_ENDPOINT");
+contract VerifyOFT_Remote is LZResolver {
+    function run() external {
+        _initResolver();
+
+        address endpoint   = _endpoint();
         address peer       = vm.envAddress("PEER");
         address adapter    = vm.envAddress("ADAPTER");
         uint32  adapterEid = uint32(vm.envUint("ADAPTER_EID"));
@@ -101,6 +109,7 @@ contract VerifyOFT_Remote is Script {
 
         console.log("======================================");
         console.log("  OFT VERIFY - REMOTE (peer)         ");
+        console.log("  Address book:", _useAddressBook);
         console.log("======================================");
 
         SySharePeer peerContract = SySharePeer(peer);
