@@ -20,11 +20,13 @@ import {ADMIN_ROLE, GUARDIAN_ROLE} from "src/types/Constants.sol";
 ///         To get the same AdminGateway address on every chain, use the same deployer
 ///         EOA at the same nonce.
 ///
-///         POST-DEPLOY: GRANT ROLES VIA SAFE
+///         POST-DEPLOY: CONFIGURE VIA SAFE
 ///         After running this script, use the Safe Transaction Builder to submit
-///         two transactions to AdminGateway (printed in console output):
-///           1. grantRole(ADMIN_ROLE, multisig)   — unlocks onlyAdmin functions
-///           2. grantRole(GUARDIAN_ROLE, guardian) — unlocks emergency pause
+///         four transactions to AdminGateway (printed in console output):
+///           1. grantRole(ADMIN_ROLE, multisig)        — unlocks onlyAdmin functions
+///           2. grantRole(GUARDIAN_ROLE, guardian)      — unlocks emergency pause
+///           3. setContractAddress(Hub, hub)            — registers Hub in AddressRegistry
+///           4. renounceRole(DEFAULT_ADMIN_ROLE, multisig) — locks role mgmt behind timelock
 ///
 ///         Required .env:
 ///           DEPLOYER_ADDRESS       — EOA address used to deploy (must match the --interactives 1 key)
@@ -100,20 +102,43 @@ contract DeploySingletons is Script {
         console.log("");
 
         // ── Print Safe Transaction Builder calldata ───────────────────────────
-        // MULTISIG holds DEFAULT_ADMIN_ROLE (set in AdminGateway constructor).
-        // Submit the following two transactions via the Safe Transaction Builder.
-        bytes memory adminRoleData    = abi.encodeCall(gateway.grantRole, (ADMIN_ROLE,    multisig));
-        bytes memory guardianRoleData = abi.encodeCall(gateway.grantRole, (GUARDIAN_ROLE, guardian));
+        _logSafeTxs(gateway, hub, multisig, guardian);
+    }
 
-        console.log("=== POST-DEPLOY: GRANT ROLES VIA SAFE ===");
+    /// @dev Extracted to avoid stack-too-deep in run().
+    function _logSafeTxs(
+        AdminGateway _gw,
+        Hub _hub,
+        address _multisig,
+        address _guardian
+    ) internal pure {
+        console.log("=== POST-DEPLOY: CONFIGURE VIA SAFE ===");
         console.log("Submit to Safe Transaction Builder (batch or sequential):");
+
+        bytes memory data;
+
+        data = abi.encodeCall(_gw.grantRole, (ADMIN_ROLE, _multisig));
         console.log("");
         console.log("TX 1 - grantRole(ADMIN_ROLE, multisig) - enables onlyAdmin functions");
-        console.log("  To  :", address(gateway));
-        console.log("  Data:", vm.toString(adminRoleData));
+        console.log("  To  :", address(_gw));
+        console.log("  Data:", vm.toString(data));
+
+        data = abi.encodeCall(_gw.grantRole, (GUARDIAN_ROLE, _guardian));
         console.log("");
         console.log("TX 2 - grantRole(GUARDIAN_ROLE, guardian) - enables emergency pause");
-        console.log("  To  :", address(gateway));
-        console.log("  Data:", vm.toString(guardianRoleData));
+        console.log("  To  :", address(_gw));
+        console.log("  Data:", vm.toString(data));
+
+        data = abi.encodeCall(_gw.setContractAddress, (keccak256("Hub"), address(_hub)));
+        console.log("");
+        console.log("TX 3 - setContractAddress(Hub) - registers Hub in AddressRegistry");
+        console.log("  To  :", address(_gw));
+        console.log("  Data:", vm.toString(data));
+
+        data = abi.encodeCall(_gw.renounceRole, (bytes32(0), _multisig));
+        console.log("");
+        console.log("TX 4 - renounceRole(DEFAULT_ADMIN_ROLE, multisig) - locks role mgmt behind timelock");
+        console.log("  To  :", address(_gw));
+        console.log("  Data:", vm.toString(data));
     }
 }
