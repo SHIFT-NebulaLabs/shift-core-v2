@@ -498,8 +498,8 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     function currentCycleState(uint256 _cycleId) external view returns (CycleState) {
         RedeemCycle storage cycle = s_redeemCycles[_cycleId];
         if (cycle.settled) return CycleState.Claimable;
-        if (block.timestamp >= i_deployTimestamp + (cycle.lockEpoch   * EPOCH_DURATION)) return CycleState.Locked;
-        if (block.timestamp >= i_deployTimestamp + (cycle.cutoffEpoch * EPOCH_DURATION)) return CycleState.Cutoff;
+        if (block.timestamp >= s_epochOrigin + (cycle.lockEpoch   * EPOCH_DURATION)) return CycleState.Locked;
+        if (block.timestamp >= s_epochOrigin + (cycle.cutoffEpoch * EPOCH_DURATION)) return CycleState.Cutoff;
         return CycleState.Pending;
     }
 

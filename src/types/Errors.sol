@@ -100,6 +100,9 @@ error SyVault__InvalidOverrideEpochs();
 /// @notice Thrown when a zero address is passed where a valid address is required.
 error SyVault__ZeroAddress();
 
+/// @notice Thrown when an operation requires the vault to have received its first epochSettle.
+error SyVault__VaultNotStarted();
+
 /*//////////////////////////////////////////////////////////////
                         LIQUIDITYPOOL
 //////////////////////////////////////////////////////////////*/

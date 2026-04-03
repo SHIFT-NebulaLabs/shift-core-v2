@@ -45,8 +45,10 @@ abstract contract SyVaultBase is ReentrancyGuard, ISyVault {
     /// @notice Paired LiquidityPool — holds non-deployed assets.
     address internal immutable i_liquidityPool;
 
-    /// @notice Timestamp of vault deployment — anchor for epoch calculations.
-    uint256 internal immutable i_deployTimestamp;
+    /// @notice Epoch origin — anchor for all epoch calculations.
+    ///         Zero until the first epochSettle() call, which floors block.timestamp to the
+    ///         nearest hour boundary. Every epoch boundary lands on a clock-hour (:00).
+    uint256 internal s_epochOrigin;
 
     /// @notice Singleton Hub address.
     address internal immutable i_hub;
@@ -69,6 +71,9 @@ abstract contract SyVaultBase is ReentrancyGuard, ISyVault {
     bool internal s_pausedDeposits;
     bool internal s_pausedRedeems;
     bool internal s_pausedFull;
+
+    /// @dev True after the first epochSettle() call anchors s_epochOrigin. Packed with pause bools.
+    bool internal s_started;
 
     /*//////////////////////////////////////////////////////////////
                        CONFIGURABLE PARAMETERS
@@ -175,8 +180,7 @@ abstract contract SyVaultBase is ReentrancyGuard, ISyVault {
         i_liquidityPool   = _liquidityPool;
         i_hub             = _hub;
         i_adminGateway    = _adminGateway;
-        // Floor to the nearest epoch boundary so keeper running at :00 every hour stays in sync.
-        i_deployTimestamp = block.timestamp - (block.timestamp % EPOCH_DURATION);
+        // s_epochOrigin stays 0 — set on first epochSettle() to anchor epochs to keeper start.
 
         s_keeper          = _keeper;
         s_allocator       = _allocator;
@@ -188,7 +192,18 @@ abstract contract SyVaultBase is ReentrancyGuard, ISyVault {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Current epoch number — equals requestId for new deposit requests.
+    ///         Returns 0 before the first epochSettle() call (vault not started).
     function currentEpoch() public view returns (uint256) {
-        return (block.timestamp - i_deployTimestamp) / EPOCH_DURATION;
+        if (!s_started) return 0;
+        return (block.timestamp - s_epochOrigin) / EPOCH_DURATION;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                         INTERNAL VIEW
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev True once the first epochSettle() has been called and s_epochOrigin is set.
+    function _isStarted() internal view returns (bool) {
+        return s_started;
     }
 }

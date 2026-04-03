@@ -572,6 +572,7 @@ contract SyVault is SyVaultRedeem {
     /// @dev Public (not external) so requestDeposit() can call it internally as the single
     ///      eligibility gate — avoids duplicating whitelist, stale price, and TVL checks.
     function maxDeposit(address _receiver) public view returns (uint256) {
+        if (!_isStarted()) return 0;
         if (s_pausedFull || s_pausedDeposits) return 0;
         if (s_depositWhitelistEnabled && !s_depositWhitelist[_receiver]) return 0;
         // Stale price guard — block new deposits if keeper has fallen too far behind.
@@ -612,6 +613,7 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function requestDepositStatus(address _controller) external view returns (DepositRequestStatus) {
+        if (!_isStarted()) return DepositRequestStatus.NotStarted;
         if (s_pausedFull || s_pausedDeposits) return DepositRequestStatus.Paused;
         if (s_depositWhitelistEnabled && !s_depositWhitelist[_controller]) return DepositRequestStatus.NotWhitelisted;
         if (s_maxStalePriceEpochs > 0) {
@@ -673,8 +675,9 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function epochEnd() external view returns (uint256) {
+        if (!_isStarted()) return type(uint256).max;
         uint256 epoch = currentEpoch();
-        return i_deployTimestamp + ((epoch + 1) * EPOCH_DURATION);
+        return s_epochOrigin + ((epoch + 1) * EPOCH_DURATION);
     }
 
     /// @inheritdoc ISyVault

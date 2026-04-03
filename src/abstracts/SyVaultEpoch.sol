@@ -13,6 +13,7 @@ import {
     SyVault__ZeroSettlementPrice
 } from "src/types/Errors.sol";
 import {
+    EPOCH_DURATION,
     MAX_HISTORY_RANGE,
     BASIS_POINTS,
     SHARE_PRICE_PRECISION,
@@ -70,6 +71,19 @@ abstract contract SyVaultEpoch is SyVaultBase {
         if (msg.sender != s_keeper) {
             if (msg.sender != i_adminGateway || _sharePrice != 0) revert SyVault__NotKeeper();
         }
+
+        // ── First call: anchor the epoch timeline ─────────────────────────────────
+        // s_started == false means the vault has not started yet. The first epochSettle
+        // call sets the origin, floored to the nearest hour so every epoch boundary
+        // lands on a clock-hour (:00). No drift regardless of when the vault was deployed.
+        // No epoch is settled here — epoch 0 is the first "pending" epoch where deposits
+        // accumulate. The next epochSettle call (1h later) settles epoch 0 normally.
+        if (!s_started) {
+            s_started     = true;
+            s_epochOrigin = block.timestamp - (block.timestamp % EPOCH_DURATION);
+            return;
+        }
+
         uint256 epochToSettle = s_nextEpochToSettle;
         if (epochToSettle >= currentEpoch()) revert SyVault__EpochNotElapsed();
 

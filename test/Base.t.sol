@@ -98,6 +98,9 @@ abstract contract Base is Test {
         VAULT_ID = registry.registerVault(address(vault), address(pool), address(syShare), address(0));
         registry.setVaultState(VAULT_ID, VaultState.Active);
         vm.stopPrank();
+
+        // 9. Start the vault — first epochSettle anchors the epoch timeline.
+        _startVault();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -124,6 +127,13 @@ abstract contract Base is Test {
     /*//////////////////////////////////////////////////////////////
                            HELPERS — EPOCH
     //////////////////////////////////////////////////////////////*/
+
+    /// @dev Trigger the first epochSettle to anchor epoch origin.
+    ///      Uses the initial share price — epoch 0 is settled at genesis price.
+    function _startVault() internal {
+        vm.prank(keeper);
+        vault.epochSettle(INITIAL_PRICE);
+    }
 
     /// @dev Advance `n` full epochs (no settlement).
     function _warpEpochs(uint256 n) internal {

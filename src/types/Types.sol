@@ -30,7 +30,8 @@ enum DepositRequestStatus {
     NotWhitelisted, // Deposit whitelist is enabled and caller is not on it.
     TVLExceeded,    // Deposit would push TVL above maxTVL.
     StalePrice,     // Keeper is too far behind — share price is stale.
-    BelowMinDeposit // Deposit amount is below the minimum deposit threshold.
+    BelowMinDeposit, // Deposit amount is below the minimum deposit threshold.
+    NotStarted      // Vault has not received its first epochSettle — not yet operational.
 }
 
 /// @notice Result of a requestRedeem (normal) eligibility check.
