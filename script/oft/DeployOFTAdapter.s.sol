@@ -53,20 +53,23 @@ contract DeployOFTAdapter is LZResolver {
         address lzEndpoint = _endpoint();
         address oftOwner   = vm.envAddress("OFT_OWNER");
 
-        // First 20 bytes = deployer (CreateX front-run protection).
-        // Last 12 bytes  = vault-scoped suffix derived from the share token address.
-        //   keccak256(syShare ++ OFT_SALT_SUFFIX) is the same value computed by
-        //   DeployOFTPeer, so adapter and all peers of this vault land at one address.
-        //   Different vaults have different syShare addresses → different salts → different OFT addresses.
+        // CreateX salt layout: [20 bytes deployer][1 byte flag][11 bytes entropy]
+        //   Bytes 0-19  = deployer (front-run protection — only this address can use this salt).
+        //   Byte  20    = 0x00 (no cross-chain redeploy protection — same address on every chain).
+        //   Bytes 21-31 = vault-scoped entropy from keccak256(syShare, OFT_SALT_SUFFIX).
+        //   Identical formula to DeployOFTPeer — adapter and all peers land at one address.
         // forge-lint: disable-next-line(unsafe-typecast)
-        bytes32 salt = bytes32(abi.encodePacked(deployer, bytes12(keccak256(abi.encodePacked(syShare, OFT_SALT_SUFFIX)))));
+        bytes32 salt = bytes32(abi.encodePacked(deployer, hex"00", bytes11(keccak256(abi.encodePacked(syShare, OFT_SALT_SUFFIX)))));
 
         bytes memory initCode = abi.encodePacked(
             type(SyOFTAdapter).creationCode,
             abi.encode(syShare, lzEndpoint, oftOwner)
         );
 
-        address predicted = ICreateX(CREATEX).computeCreate3Address(salt, deployer);
+        // computeCreate3Address is a raw calculator — pass the guarded salt and CreateX as deployer.
+        // _guard for (MsgSender, False) computes: guardedSalt = keccak256(bytes32(deployer) ++ salt)
+        bytes32 guardedSalt = keccak256(abi.encodePacked(bytes32(uint256(uint160(deployer))), salt));
+        address predicted = ICreateX(CREATEX).computeCreate3Address(guardedSalt, CREATEX);
 
         console.log("=== OFT ADAPTER DEPLOY (home chain) ===");
         console.log("Predicted address :", predicted);

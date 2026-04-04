@@ -1,7 +1,7 @@
 # Shift Core V2 — Makefile
 # Usage: make <target>
 # Variables are loaded from .env automatically.
-# All deploy/wire targets use --interactives 1s 1: Foundry will prompt for the private key.
+# All deploy/wire targets use --account: set DEPLOYER_ACCOUNT in .env (cast wallet import <name> --interactive).
 
 # Load .env if it exists (- prefix suppresses error when missing).
 -include .env
@@ -89,78 +89,78 @@ clean:
 
 deploy-singletons:
 	forge script script/protocol/DeploySingletons.s.sol \
-		--rpc-url $(RPC_URL) --broadcast --verify --interactives 1
+		--rpc-url $(RPC_URL) --broadcast --verify --account $(DEPLOYER_ACCOUNT)
 
 deploy-vault:
 	forge script script/protocol/DeployVault.s.sol \
-		--rpc-url $(RPC_URL) --broadcast --verify --interactives 1
+		--rpc-url $(RPC_URL) --broadcast --verify --account $(DEPLOYER_ACCOUNT)
 
 activate-vault-schedule:
 	forge script script/protocol/ActivateVault.s.sol:ActivateVault_Schedule \
-		--rpc-url $(RPC_URL) --broadcast --interactives 1
+		--rpc-url $(RPC_URL) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 activate-vault-execute:
 	forge script script/protocol/ActivateVault.s.sol:ActivateVault_Execute \
-		--rpc-url $(RPC_URL) --broadcast --interactives 1
+		--rpc-url $(RPC_URL) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 # ─── Deploy — OFT Bridge ──────────────────────────────────────────────────────
 
 deploy-mock-token:
 	forge script script/helpers/DeployMockToken.s.sol:DeployMockToken \
-		--rpc-url $(HOME_RPC) --broadcast --verify --interactives 1
+		--rpc-url $(HOME_RPC) --broadcast --verify --account $(DEPLOYER_ACCOUNT)
 
 deploy-adapter:
 	forge script script/oft/DeployOFTAdapter.s.sol \
-		--rpc-url $(HOME_RPC) --broadcast --verify --interactives 1
+		--rpc-url $(HOME_RPC) --broadcast --verify --account $(DEPLOYER_ACCOUNT)
 
 deploy-peer:
 	forge script script/oft/DeployOFTPeer.s.sol \
-		--rpc-url $(REMOTE_RPC) --broadcast --verify --interactives 1
+		--rpc-url $(REMOTE_RPC) --broadcast --verify --account $(DEPLOYER_ACCOUNT)
 
 # ─── Wire — OFT Bridge ────────────────────────────────────────────────────────
 # Correct order: options → ratelimit → libs → dvn → peers (peers LAST — opens channel).
 
 wire-options-home:
 	forge script script/helpers/WireOFT_SetOptions.s.sol:WireOFT_SetOptions_Home \
-		--rpc-url $(HOME_RPC) --broadcast --interactives 1
+		--rpc-url $(HOME_RPC) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 wire-options-remote:
 	forge script script/helpers/WireOFT_SetOptions.s.sol:WireOFT_SetOptions_Remote \
-		--rpc-url $(REMOTE_RPC) --broadcast --interactives 1
+		--rpc-url $(REMOTE_RPC) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 wire-ratelimit:
 	forge script script/helpers/WireOFT_SetRateLimit.s.sol:WireOFT_SetRateLimit \
-		--rpc-url $(HOME_RPC) --broadcast --interactives 1
+		--rpc-url $(HOME_RPC) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 # ─── Library selection (mainnet — optional if using default libs) ──────────────
 
 wire-libs-home:
 	forge script script/helpers/WireOFT_SetLibs.s.sol:WireOFT_SetLibs_Home \
-		--rpc-url $(HOME_RPC) --broadcast --interactives 1
+		--rpc-url $(HOME_RPC) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 wire-libs-remote:
 	forge script script/helpers/WireOFT_SetLibs.s.sol:WireOFT_SetLibs_Remote \
-		--rpc-url $(REMOTE_RPC) --broadcast --interactives 1
+		--rpc-url $(REMOTE_RPC) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 # ─── DVN config (mainnet security — run after wire-libs, before wire-peers) ───
 
 wire-dvn-home:
 	forge script script/helpers/WireOFT_SetDVN.s.sol:WireOFT_SetDVN_Home \
-		--rpc-url $(HOME_RPC) --broadcast --interactives 1
+		--rpc-url $(HOME_RPC) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 wire-dvn-remote:
 	forge script script/helpers/WireOFT_SetDVN.s.sol:WireOFT_SetDVN_Remote \
-		--rpc-url $(REMOTE_RPC) --broadcast --interactives 1
+		--rpc-url $(REMOTE_RPC) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 # ─── Peers (opens the live channel — always last) ─────────────────────────────
 
 wire-peers-home:
 	forge script script/helpers/WireOFT_SetPeers.s.sol:WireOFT_SetPeers_Home \
-		--rpc-url $(HOME_RPC) --broadcast --interactives 1
+		--rpc-url $(HOME_RPC) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 wire-peers-remote:
 	forge script script/helpers/WireOFT_SetPeers.s.sol:WireOFT_SetPeers_Remote \
-		--rpc-url $(REMOTE_RPC) --broadcast --interactives 1
+		--rpc-url $(REMOTE_RPC) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 # ─── Verify (read-only) ───────────────────────────────────────────────────────
 
@@ -188,8 +188,8 @@ verify-dvn-remote:
 
 bridge-send:
 	forge script script/helpers/TestBridge.s.sol:TestBridge_Send \
-		--rpc-url $(HOME_RPC) --broadcast --interactives 1
+		--rpc-url $(HOME_RPC) --broadcast --account $(DEPLOYER_ACCOUNT)
 
 bridge-return:
 	forge script script/helpers/TestBridge.s.sol:TestBridge_Return \
-		--rpc-url $(REMOTE_RPC) --broadcast --interactives 1
+		--rpc-url $(REMOTE_RPC) --broadcast --account $(DEPLOYER_ACCOUNT)
