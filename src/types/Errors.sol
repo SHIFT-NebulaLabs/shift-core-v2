@@ -42,7 +42,7 @@ error SyVault__FastCycleNotSettled();
 /// @notice Thrown when settleRedeemBatch() is called before the cycle lock epoch.
 error SyVault__CycleNotLocked();
 
-/// @notice Thrown when cancelRedeemRequest() or cancelFastRedeemRequest() is called after the cycle lock epoch.
+/// @notice Thrown when cancelRedeemRequest() is called after the cycle lock epoch.
 error SyVault__CycleLocked();
 
 /// @notice Thrown when settleRedeemBatch() is called on an already-settled cycle.

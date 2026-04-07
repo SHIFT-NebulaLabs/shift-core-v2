@@ -112,13 +112,6 @@ interface IHub {
         external
         returns (uint256 requestId);
 
-    /// @notice Cancel a pending fast redeem request.
-    /// @dev    Always available until fast cycle lock. Forwards to syVault.cancelFastRedeemRequest().
-    /// @param  vaultId    Identifier of the target vault.
-    /// @param  requestId  Fast cycle id at which the request was submitted.
-    /// @param  controller Controller that owns the request.
-    function cancelFastRedeemRequest(uint256 vaultId, uint256 requestId, address controller)
-        external;
 
     /*//////////////////////////////////////////////////////////////
                            OPERATOR

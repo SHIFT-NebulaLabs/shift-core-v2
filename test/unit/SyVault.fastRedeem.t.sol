@@ -7,8 +7,7 @@ import {
     SyVault__ZeroAmount,
     SyVault__RedeemRequestAlreadyPending,
     SyVault__FastCycleNotSettled,
-    SyVault__FastRedeemDisabled,
-    SyVault__CycleLocked
+    SyVault__FastRedeemDisabled
 } from "src/types/Errors.sol";
 import {FAST_REDEEM_CUTOFF, FAST_REDEEM_LOCK_WINDOW, BASIS_POINTS} from "src/types/Constants.sol";
 
@@ -70,29 +69,6 @@ contract SyVaultFastRedeemTest is Base {
         vm.stopPrank();
     }
 
-    function test_FastRedeem_DeadCycle_AllCancelledDoesNotBlock() external {
-        // A fast cycle where all requests were cancelled (shares == 0) must not block a new cycle.
-        uint256 aliceShares = _giveShares(alice, 100e18);
-        uint256 bobShares   = _giveShares(bob, 50e18);
-
-        uint256 firstCycleId = _requestFastRedeem(alice, aliceShares);
-
-        // Advance past fast cycle cutoff
-        _warpEpochs(FAST_REDEEM_CUTOFF + 1);
-
-        // Alice cancels — cycle now has shares == 0 (dead cycle)
-        vm.prank(alice);
-        hub.cancelFastRedeemRequest(VAULT_ID, firstCycleId, alice);
-
-        // Dead cycle must not block bob — new fast cycle opens immediately
-        vm.startPrank(bob);
-        syShare.approve(address(vault), bobShares);
-        uint256 newCycleId = hub.requestFastRedeem(VAULT_ID, bobShares, bob, bob);
-        vm.stopPrank();
-
-        assertGt(newCycleId, firstCycleId);
-        assertEq(vault.redeemCycleSchedule(newCycleId).shares, bobShares);
-    }
 
     /*//////////////////////////////////////////////////////////////
                      requestFastRedeem — HAPPY PATH
@@ -140,38 +116,6 @@ contract SyVaultFastRedeemTest is Base {
         assertGt(bobCycleId, firstCycleId);
     }
 
-    /*//////////////////////////////////////////////////////////////
-                  cancelFastRedeemRequest — HAPPY PATH
-    //////////////////////////////////////////////////////////////*/
-
-    function test_cancelFastRedeem_returnsShares(uint256 amount) external {
-        amount = bound(amount, 1e9, type(uint64).max);
-        uint256 shares = _giveShares(alice, amount);
-        uint256 cycleId = _requestFastRedeem(alice, shares);
-
-        uint256 aliceBefore = syShare.balanceOf(alice);
-        vm.prank(alice);
-        hub.cancelFastRedeemRequest(VAULT_ID, cycleId, alice);
-
-        assertEq(syShare.balanceOf(alice), aliceBefore + shares);
-        assertEq(vault.pendingFastRedeemRequest(cycleId, alice), 0);
-        assertEq(vault.pendingRedeemShares(), 0);
-
-        (uint256 reqId,) = vault.activeRedeemRequest(alice);
-        assertEq(reqId, 0);
-    }
-
-    function test_RevertWhen_CancelFastRedeem_AfterLock() external {
-        uint256 shares = _giveShares(alice, 100e18);
-        uint256 cycleId = _requestFastRedeem(alice, shares);
-
-        RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
-
-        vm.prank(alice);
-        vm.expectRevert(SyVault__CycleLocked.selector);
-        hub.cancelFastRedeemRequest(VAULT_ID, cycleId, alice);
-    }
 
     /*//////////////////////////////////////////////////////////////
                    fast redeem claim — WITH FEE
@@ -399,20 +343,6 @@ contract SyVaultFastRedeemTest is Base {
         vm.prank(alice);
         uint256 received = hub.redeem(VAULT_ID, shares, alice, alice);
         assertGt(received, 0);
-    }
-
-    function test_FastRedeem_DisableDoesNotAffectCancel() external {
-        uint256 shares  = _giveShares(alice, 100e18);
-        uint256 cycleId = _requestFastRedeem(alice, shares);
-
-        vm.prank(admin);
-        vault.setFastRedeemEnabled(false);
-
-        // Cancel must still work — flag only blocks new requests.
-        vm.prank(alice);
-        hub.cancelFastRedeemRequest(VAULT_ID, cycleId, alice);
-
-        assertEq(syShare.balanceOf(alice), shares);
     }
 
     function test_FastRedeem_ReenableAfterDisable() external {

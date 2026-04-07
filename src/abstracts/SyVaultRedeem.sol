@@ -171,27 +171,6 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         emit FastRedeemRequest(_controller, _owner, requestId, msg.sender, _shares);
     }
 
-    /// @notice Cancel a pending fast redeem request and return shares to owner.
-    function cancelFastRedeemRequest(uint256 _requestId, address _controller) external onlyHub {
-        uint256 shares = s_pendingRedeems[_controller][_requestId];
-        if (shares == 0) revert SyVault__NoPendingRequest();
-
-        RedeemCycle storage cycle = s_redeemCycles[_requestId];
-        if (cycle.cycleType != CycleType.Fast)  revert SyVault__NoPendingRequest();
-        if (currentEpoch() >= cycle.lockEpoch)  revert SyVault__CycleLocked();
-
-        address owner = s_redeemRequestOwner[_controller][_requestId];
-
-        cycle.shares                             -= shares;
-        s_pendingRedeems[_controller][_requestId] = 0;
-        s_activeRedeemCycleId[_controller]        = 0;
-        s_activeRedeemIsFast[_controller]         = false;
-        s_totalLockedShares                       -= shares;
-
-        IERC20(address(i_share)).safeTransfer(owner, shares);
-
-        emit RedeemCancelRequest(_controller, _requestId, shares);
-    }
 
     /*//////////////////////////////////////////////////////////////
                    EXTERNAL STATE-CHANGING — ALLOCATOR

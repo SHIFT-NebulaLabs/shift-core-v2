@@ -130,28 +130,6 @@ contract SyVaultFastRedeemCapTest is Base {
         assertEq(vault.pendingFastRedeemRequest(cycleId, alice), shares);
     }
 
-    /*//////////////////////////////////////////////////////////////
-              CAP AFTER CANCEL — FREES ROOM
-    //////////////////////////////////////////////////////////////*/
-
-    function test_fastRedeem_capFreedAfterCancel() external {
-        // Set cap to 30%
-        vm.prank(admin);
-        vault.setFastRedeemCapBps(3000);
-
-        _giveShares(alice, 50e18);
-        _giveShares(bob, 50e18);
-
-        // Alice takes 25e18 = 25% of TVL
-        uint256 cycleId = _requestFastRedeem(alice, 25e18);
-
-        // Alice cancels — frees room
-        vm.prank(alice);
-        hub.cancelFastRedeemRequest(VAULT_ID, cycleId, alice);
-
-        // Bob can now request 30e18 = 30% — exactly at cap
-        _requestFastRedeem(bob, 30e18);
-    }
 
     /*//////////////////////////////////////////////////////////////
               PRE-FLIGHT STATUS — CapExceeded

@@ -245,12 +245,6 @@ interface ISyVault {
         external
         returns (uint256 requestId);
 
-    /// @notice Cancel a pending fast redeem request and return shares to owner.
-    /// @dev    Only available before fast cycle lock epoch (epoch 20). Always callable — bypasses pause.
-    ///         Only callable via Hub.
-    /// @param  requestId   Fast cycle id at which the request was submitted.
-    /// @param  controller  Controller that owns the request.
-    function cancelFastRedeemRequest(uint256 requestId, address controller) external;
 
     /// @notice Claim a settled deposit — mints shares to receiver.
     /// @dev    Does NOT transfer assets — already happened at requestDeposit(). Only callable via Hub.

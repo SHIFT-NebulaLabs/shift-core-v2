@@ -113,11 +113,6 @@ contract Hub is IHub {
         return ISyVault(_getSyVault(_vaultId)).requestFastRedeem(_shares, _controller, _owner);
     }
 
-    /// @inheritdoc IHub
-    function cancelFastRedeemRequest(uint256 _vaultId, uint256 _requestId, address _controller) external {
-        _requireCallerAuthorized(_vaultId, _controller, _controller);
-        ISyVault(_getSyVault(_vaultId)).cancelFastRedeemRequest(_requestId, _controller);
-    }
 
     /*//////////////////////////////////////////////////////////////
                             OPERATOR
