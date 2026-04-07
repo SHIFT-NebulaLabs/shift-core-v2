@@ -103,6 +103,9 @@ error SyVault__ZeroAddress();
 /// @notice Thrown when an operation requires the vault to have received its first epochSettle.
 error SyVault__VaultNotStarted();
 
+/// @notice Thrown when a fast redeem request would push the cycle's total shares above the per-cycle cap.
+error SyVault__FastRedeemCapExceeded();
+
 /*//////////////////////////////////////////////////////////////
                         LIQUIDITYPOOL
 //////////////////////////////////////////////////////////////*/

@@ -120,6 +120,7 @@ contract SyVault is SyVaultRedeem {
         s_hwm               = _initialSharePrice;
         s_cycleIdCounter                 = 1; // 0 reserved as "no active redeem" sentinel
         s_fastRedeemEnabled              = _fastRedeemEnabled;
+        s_fastRedeemCapBps               = BASIS_POINTS; // 100% of TVL = unlimited by default
         s_allocatorActiveOverrideEpochs  = 2;
         // Precision floor: minimum share amount that maps to at least 1 raw asset unit.
         // Prevents dust redeem cycles that would settle with cycleRate = 0 on low-decimal assets.
@@ -489,6 +490,13 @@ contract SyVault is SyVaultRedeem {
         s_fastRedeemFeeBps = _bps;
     }
 
+    /// @inheritdoc ISyVault
+    function setFastRedeemCapBps(uint256 _bps) external onlyAdminGateway {
+        if (_bps == 0 || _bps > BASIS_POINTS) revert SyVault__InvalidParam();
+        emit FastRedeemCapBpsUpdated(s_fastRedeemCapBps, _bps);
+        s_fastRedeemCapBps = _bps;
+    }
+
     /*//////////////////////////////////////////////////////////////
          EXTERNAL STATE-CHANGING — ADMIN GATEWAY (WHITELISTS)
     //////////////////////////////////////////////////////////////*/
@@ -753,6 +761,9 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function fastRedeemFeeBps() external view returns (uint256) { return s_fastRedeemFeeBps; }
+
+    /// @inheritdoc ISyVault
+    function fastRedeemCapBps() external view returns (uint256) { return s_fastRedeemCapBps; }
 
     /// @inheritdoc ISyVault
     function depositWhitelistEnabled() external view returns (bool) { return s_depositWhitelistEnabled; }

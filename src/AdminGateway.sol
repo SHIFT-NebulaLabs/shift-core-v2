@@ -263,6 +263,11 @@ contract AdminGateway is TimelockController {
         ISyVault(_getSyVault(_vaultId)).setFastRedeemFeeBps(_bps);
     }
 
+    /// @notice Set fast redeem per-cycle cap as basis points of TVL. 10000 = 100% = unlimited. onlyAdmin.
+    function setFastRedeemCapBps(uint256 _vaultId, uint256 _bps) external onlyAdmin {
+        ISyVault(_getSyVault(_vaultId)).setFastRedeemCapBps(_bps);
+    }
+
     /*//////////////////////////////////////////////////////////////
                     WHITELISTS — ADMIN (immediate)
     //////////////////////////////////////////////////////////////*/

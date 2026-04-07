@@ -89,6 +89,7 @@ abstract contract SyVaultBase is ReentrancyGuard, ISyVault {
     uint256 internal s_performanceFeeBps;
     uint256 internal s_maintenanceFeeBps;       // annualized basis points
     uint256 internal s_fastRedeemFeeBps;
+    uint256 internal s_fastRedeemCapBps;        // per-cycle cap as % of TVL (BASIS_POINTS = 100% = unlimited)
 
     /*//////////////////////////////////////////////////////////////
                              WHITELISTS

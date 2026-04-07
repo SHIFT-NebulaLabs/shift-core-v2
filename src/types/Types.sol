@@ -48,7 +48,8 @@ enum FastRedeemRequestStatus {
     Paused,                    // Vault is fully paused or redeems are paused.
     Disabled,                  // Fast redeem has been turned off by admin.
     AlreadyPending,            // Owner already has an active redeem request.
-    FastCycleSettlementPending // Current fast cycle is past cutoff and not yet settled — wait for Allocator.
+    FastCycleSettlementPending, // Current fast cycle is past cutoff and not yet settled — wait for Allocator.
+    CapExceeded                // Fast redeem cap per cycle would be exceeded by this request.
 }
 
 /// @notice Progression state of a redeem cycle from the perspective of incoming requests.

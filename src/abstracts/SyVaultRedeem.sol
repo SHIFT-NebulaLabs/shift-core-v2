@@ -10,6 +10,7 @@ import {
     SyVault__RedeemRequestAlreadyPending,
     SyVault__FastCycleNotSettled,
     SyVault__FastRedeemDisabled,
+    SyVault__FastRedeemCapExceeded,
     SyVault__CycleNotLocked,
     SyVault__CycleLocked,
     SyVault__CycleAlreadySettled,
@@ -147,6 +148,16 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         if (s_activeRedeemCycleId[_controller] != 0) revert SyVault__RedeemRequestAlreadyPending();
 
         requestId = _openOrReuseCycle(CycleType.Fast);
+
+        // Per-cycle cap: total shares in this fast cycle must not exceed fastRedeemCapBps % of TVL.
+        if (s_fastRedeemCapBps < BASIS_POINTS) {
+            uint256 tvl = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION;
+            uint256 capAssets = (tvl * s_fastRedeemCapBps) / BASIS_POINTS;
+            uint256 capShares = (capAssets * SHARE_PRICE_PRECISION) / s_sharePrice;
+            if (s_redeemCycles[requestId].shares + _shares > capShares) {
+                revert SyVault__FastRedeemCapExceeded();
+            }
+        }
 
         s_redeemCycles[requestId].shares             += _shares;
         s_pendingRedeems[_controller][requestId]     += _shares;
@@ -528,6 +539,15 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
             && !s_redeemCycles[s_currentFastCycleId].settled
             && s_redeemCycles[s_currentFastCycleId].shares > 0)
             return FastRedeemRequestStatus.FastCycleSettlementPending;
+        // Cap check: if the current fast cycle already reached the cap, signal CapExceeded.
+        if (s_fastRedeemCapBps < BASIS_POINTS && s_currentFastCycleId != 0) {
+            uint256 tvl = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION;
+            uint256 capAssets = (tvl * s_fastRedeemCapBps) / BASIS_POINTS;
+            uint256 capShares = (capAssets * SHARE_PRICE_PRECISION) / s_sharePrice;
+            if (s_redeemCycles[s_currentFastCycleId].shares >= capShares) {
+                return FastRedeemRequestStatus.CapExceeded;
+            }
+        }
         return FastRedeemRequestStatus.Ok;
     }
 

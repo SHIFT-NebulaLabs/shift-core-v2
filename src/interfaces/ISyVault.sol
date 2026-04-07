@@ -187,6 +187,9 @@ interface ISyVault {
     /// @notice Emitted when fast redeem is enabled or disabled.
     event FastRedeemEnabledUpdated(bool enabled);
 
+    /// @notice Emitted when the fast redeem per-cycle cap (basis points of TVL) is changed.
+    event FastRedeemCapBpsUpdated(uint256 oldBps, uint256 newBps);
+
     /*//////////////////////////////////////////////////////////////
                         EIP-7540 — WRITE
     //////////////////////////////////////////////////////////////*/
@@ -627,6 +630,8 @@ interface ISyVault {
     function performanceFeeBps()       external view returns (uint256);
     function maintenanceFeeBps()       external view returns (uint256);
     function fastRedeemFeeBps()        external view returns (uint256);
+    /// @notice Per-cycle fast redeem cap as basis points of TVL. 10000 = 100% = unlimited (default).
+    function fastRedeemCapBps()        external view returns (uint256);
     function depositWhitelistEnabled() external view returns (bool);
 
     /// @notice Current pause state of the vault.
@@ -706,6 +711,9 @@ interface ISyVault {
     function setMaintenanceFeeBps(uint256 bps) external;
     /// @notice Set fast redeem fee in basis points. onlyAdminGateway.
     function setFastRedeemFeeBps(uint256 bps) external;
+    /// @notice Set fast redeem per-cycle cap as basis points of TVL. BASIS_POINTS (10000) = 100% = unlimited.
+    ///         onlyAdminGateway. No timelock — same tier as maxTVL.
+    function setFastRedeemCapBps(uint256 bps) external;
 
     /*//////////////////////////////////////////////////////////////
                ADMIN GATEWAY — WHITELISTS
