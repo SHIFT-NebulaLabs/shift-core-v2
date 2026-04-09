@@ -523,7 +523,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
             uint256 tvl = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION;
             uint256 capAssets = (tvl * s_fastRedeemCapBps) / BASIS_POINTS;
             uint256 capShares = (capAssets * SHARE_PRICE_PRECISION) / s_sharePrice;
-            if (s_redeemCycles[s_currentFastCycleId].shares >= capShares) {
+            if (s_redeemCycles[s_currentFastCycleId].shares + s_minRedeem > capShares) {
                 return FastRedeemRequestStatus.CapExceeded;
             }
         }
