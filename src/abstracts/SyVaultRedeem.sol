@@ -218,6 +218,9 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Claim a settled redeem — burns shares and transfers assets to receiver.
+    /// @dev    Dust sweep: if the requested partial would leave a residual below s_minRedeem,
+    ///         _shares is upgraded to the full pendingShares. Prevents stranded dust in
+    ///         s_claimableRedeemAssets when grossAssets would round to zero on a later call.
     function redeem(uint256 _shares, address _receiver, address _controller)
         external
         onlyHub
@@ -227,11 +230,17 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         if (_receiver == address(0)) revert SyVault__InvalidParam();
         if (_shares == 0) revert SyVault__ZeroAmount();
 
+        uint256 cycleId       = s_activeRedeemCycleId[_controller];
+        uint256 pendingShares = s_pendingRedeems[_controller][cycleId];
+        if (s_minRedeem > 0 && _shares < pendingShares && pendingShares - _shares < s_minRedeem) {
+            _shares = pendingShares;
+        }
+
         (uint256 grossAssets, uint256 fee, uint256 netAssets) = _claimRedeemAssets(_controller, _shares);
         assets = netAssets;
 
-        s_pendingRedeems[_controller][s_activeRedeemCycleId[_controller]] -= _shares;
-        if (s_pendingRedeems[_controller][s_activeRedeemCycleId[_controller]] == 0) {
+        s_pendingRedeems[_controller][cycleId] -= _shares;
+        if (s_pendingRedeems[_controller][cycleId] == 0) {
             s_activeRedeemCycleId[_controller]  = 0;
             s_activeRedeemIsFast[_controller]   = false;
         }
@@ -243,6 +252,11 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     }
 
     /// @notice Claim a settled redeem by specifying exact assets — burns corresponding shares.
+    /// @dev    Dust sweep: if the computed shares would leave a residual below s_minRedeem,
+    ///         the call sweeps the full pendingShares and the receiver gets the full
+    ///         corresponding net assets — strictly more than the requested _assets.
+    ///         Deliberate EIP-7540 deviation to prevent permanent-revert traps and
+    ///         stranded dust in s_claimableRedeemAssets.
     function withdraw(uint256 _assets, address _receiver, address _controller)
         external
         onlyHub
@@ -280,9 +294,18 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
             : 0;
         if (shares == 0 || shares > pendingShares) revert SyVault__NoClaimableRedeem();
 
-        // Recompute exact gross assets from rounded shares to avoid dust.
-        grossAssets = (shares * cycle.cycleRate) / SHARE_PRICE_PRECISION;
-        if (fee > 0) fee = grossAssets - _assets;
+        // Dust sweep: if residual would be sub-minimum, sweep the full position.
+        // Caller receives the full net for all remaining shares — more than the requested _assets.
+        uint256 netAssets;
+        if (s_minRedeem > 0 && pendingShares - shares > 0 && pendingShares - shares < s_minRedeem) {
+            shares = pendingShares;
+            (grossAssets, fee, netAssets) = _claimRedeemAssets(_controller, shares);
+        } else {
+            // Recompute exact gross assets from rounded shares to avoid dust.
+            grossAssets = (shares * cycle.cycleRate) / SHARE_PRICE_PRECISION;
+            if (fee > 0) fee = grossAssets - _assets;
+            netAssets = _assets;
+        }
 
         s_pendingRedeems[_controller][cycleId] -= shares;
         if (s_pendingRedeems[_controller][cycleId] == 0) {
@@ -292,7 +315,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         s_claimableRedeemAssets -= grossAssets;
 
         if (fee > 0) ILiquidityPool(i_liquidityPool).transferTo(s_feeRecipient, fee);
-        ILiquidityPool(i_liquidityPool).transferTo(_receiver, _assets);
+        ILiquidityPool(i_liquidityPool).transferTo(_receiver, netAssets);
     }
 
     /*//////////////////////////////////////////////////////////////
