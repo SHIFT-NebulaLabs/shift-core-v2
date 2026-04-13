@@ -263,7 +263,7 @@ contract SyVault is SyVaultRedeem {
         for (uint256 i = s_depositClaimIndex[_controller]; i < len; ++i) {
             uint256 epoch       = epochs[i];
             uint256 settlePrice = s_epochSettlementPrice[epoch];
-            if (settlePrice == 0) continue; // not yet settled — index cannot advance past unsettled entries
+            if (settlePrice == 0) break; // not yet settled — all subsequent epochs are also unsettled
 
             uint256 pending = s_pendingDeposits[_controller][epoch];
             if (pending == 0) {
@@ -306,7 +306,7 @@ contract SyVault is SyVaultRedeem {
         for (uint256 i = s_depositClaimIndex[_controller]; i < len; ++i) {
             uint256 epoch       = epochs[i];
             uint256 settlePrice = s_epochSettlementPrice[epoch];
-            if (settlePrice == 0) continue;
+            if (settlePrice == 0) break; // not yet settled — all subsequent epochs are also unsettled
 
             uint256 pending = s_pendingDeposits[_controller][epoch];
             if (pending == 0) {
