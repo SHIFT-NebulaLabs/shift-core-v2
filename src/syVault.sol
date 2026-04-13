@@ -26,6 +26,7 @@ import {
 import {
     SHARE_PRICE_PRECISION,
     BASIS_POINTS,
+    MAX_FAST_REDEEM_FEE_BPS,
     EPOCHS_PER_YEAR,
     EPOCH_DURATION
 } from "src/types/Constants.sol";
@@ -485,7 +486,7 @@ contract SyVault is SyVaultRedeem {
 
     /// @inheritdoc ISyVault
     function setFastRedeemFeeBps(uint256 _bps) external onlyAdminGateway {
-        if (_bps > BASIS_POINTS) revert SyVault__InvalidParam();
+        if (_bps > MAX_FAST_REDEEM_FEE_BPS) revert SyVault__InvalidParam();
         emit FastRedeemFeeBpsUpdated(s_fastRedeemFeeBps, _bps);
         s_fastRedeemFeeBps = _bps;
     }

@@ -43,6 +43,10 @@ uint256 constant MAX_HISTORY_RANGE = 720;
 // Basis points denominator (10 000 = 100%).
 uint256 constant BASIS_POINTS = 10_000;
 
+// Maximum fast redeem fee (30%). Values above this have no legitimate use case
+// and risk division-by-zero in withdraw() or total-loss in redeem().
+uint256 constant MAX_FAST_REDEEM_FEE_BPS = 3_000;
+
 // Epochs per year — used for annualised maintenance fee proration (1 epoch = 1 hour).
 uint256 constant EPOCHS_PER_YEAR = 8_760;
 
