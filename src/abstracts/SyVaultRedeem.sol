@@ -438,6 +438,9 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     }
 
     /// @notice Assets in Claimable state for a given fast redeem — fee already deducted.
+    /// @dev    Net is floored directly via `gross * (BP - feeBps) / BP` instead of
+    ///         `gross - floor(gross * feeBps / BP)`. The latter can overstate the net by 1 wei,
+    ///         causing withdraw() to revert when the inverse ceil-division produces gross' > gross.
     function claimableFastRedeemRequest(uint256 _requestId, address _controller)
         external
         view
@@ -450,7 +453,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         uint256 gross = (shares * cycle.cycleRate) / SHARE_PRICE_PRECISION;
         // Deduct fast redeem fee unless whitelisted.
         if (s_fastRedeemFeeWhitelist[_controller]) return gross;
-        return gross - (gross * cycle.feeBps / BASIS_POINTS);
+        return (gross * (BASIS_POINTS - cycle.feeBps)) / BASIS_POINTS;
     }
 
     /// @notice Active redeem request for a controller.

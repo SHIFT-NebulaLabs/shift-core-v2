@@ -210,7 +210,7 @@ contract SyVaultFastRedeemTest is Base {
         _allocatorSettleCycle(cycleId, amount);
 
         uint256 claimable = vault.claimableFastRedeemRequest(cycleId, alice);
-        uint256 expectedNet = amount - (amount * feeBps) / BASIS_POINTS;
+        uint256 expectedNet = (amount * (BASIS_POINTS - feeBps)) / BASIS_POINTS;
 
         assertEq(claimable, expectedNet);
     }
