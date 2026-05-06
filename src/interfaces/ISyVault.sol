@@ -324,6 +324,34 @@ interface ISyVault {
         view
         returns (uint256 assets);
 
+    /// @notice Paginated slice of every deposit requestId ever opened by `controller`.
+    /// @dev    Returned ids are in submission order and may be Pending, Claimable, claimed,
+    ///         or cancelled — caller filters via pendingDepositRequest()/claimableDepositRequest().
+    ///         Use depositRequestIdsCursor() as `offset` to skip the fully-consumed prefix.
+    ///         For redeem requests use activeRedeemRequest() — only one redeem may be open at a time.
+    /// @param  controller  Controller whose deposit history to read.
+    /// @param  offset      Index to start from (0 = oldest).
+    /// @param  limit       Max number of ids to return; clamped to `total - offset`.
+    /// @return ids         Slice of request ids.
+    /// @return total       Total length of the underlying array (for pagination math).
+    function getDepositRequestIds(address controller, uint256 offset, uint256 limit)
+        external
+        view
+        returns (uint256[] memory ids, uint256 total);
+
+    /// @notice Total number of deposit requestIds ever opened by `controller`.
+    /// @param  controller  Controller to query.
+    /// @return length      Length of the underlying epoch array.
+    function depositRequestIdsLength(address controller) external view returns (uint256 length);
+
+    /// @notice Index before which all deposit requestIds are fully consumed (claimed).
+    /// @dev    FE can pass this as `offset` to getDepositRequestIds() to skip dead entries.
+    ///         Cursor only advances at the head as claim() drains epochs — entries after may
+    ///         still be Pending, Claimable, or zero-balance (cancelled in-place).
+    /// @param  controller  Controller to query.
+    /// @return cursor      First index that may still hold a non-consumed request.
+    function depositRequestIdsCursor(address controller) external view returns (uint256 cursor);
+
     /// @notice Shares in Pending state for a given normal redeem request.
     /// @param  requestId   Normal cycle id at which the request was submitted.
     /// @param  controller  Controller that owns the request.

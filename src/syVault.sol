@@ -553,6 +553,35 @@ contract SyVault is SyVaultRedeem {
     }
 
     /// @inheritdoc ISyVault
+    function getDepositRequestIds(address _controller, uint256 _offset, uint256 _limit)
+        external
+        view
+        returns (uint256[] memory ids, uint256 total)
+    {
+        uint256[] storage epochs = s_controllerDepositEpochs[_controller];
+        total = epochs.length;
+        if (_offset >= total || _limit == 0) return (new uint256[](0), total);
+        // Clamp `take` against the remaining slice instead of computing _offset + _limit,
+        // which would overflow for callers that pass type(uint256).max as a "give me everything" sentinel.
+        uint256 available = total - _offset;
+        uint256 take      = _limit < available ? _limit : available;
+        ids = new uint256[](take);
+        for (uint256 i; i < take; ++i) {
+            ids[i] = epochs[_offset + i];
+        }
+    }
+
+    /// @inheritdoc ISyVault
+    function depositRequestIdsLength(address _controller) external view returns (uint256 length) {
+        return s_controllerDepositEpochs[_controller].length;
+    }
+
+    /// @inheritdoc ISyVault
+    function depositRequestIdsCursor(address _controller) external view returns (uint256 cursor) {
+        return s_depositClaimIndex[_controller];
+    }
+
+    /// @inheritdoc ISyVault
     function isOperator(address _controller, address _operator) external view returns (bool) {
         return s_operators[_controller][_operator];
     }
