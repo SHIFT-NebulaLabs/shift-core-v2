@@ -14,7 +14,7 @@ import {
     SyVault__RedeemsPaused,
     SyVault__NotHub
 } from "src/types/Errors.sol";
-import {NORMAL_REDEEM_CUTOFF, SHARE_PRICE_PRECISION} from "src/types/Constants.sol";
+import {NORMAL_REDEEM_CUTOFF, SHARE_PRICE_PRECISION, EPOCH_DURATION} from "src/types/Constants.sol";
 
 contract SyVaultRedeemTest is Base {
 
@@ -173,7 +173,7 @@ contract SyVaultRedeemTest is Base {
         uint256 cycleId = _requestRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1); // past lock
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1); // past lock
 
         vm.prank(alice);
         vm.expectRevert(SyVault__CycleLocked.selector);
@@ -190,7 +190,7 @@ contract SyVaultRedeemTest is Base {
         uint256 cycleId = _requestRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
 
         _allocatorSettleCycle(cycleId, amount);
 
@@ -207,7 +207,7 @@ contract SyVaultRedeemTest is Base {
         uint256 cycleId = _requestRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
 
         uint256 supplyBefore = syShare.totalSupply();
         _allocatorSettleCycle(cycleId, 100e18);
@@ -220,7 +220,7 @@ contract SyVaultRedeemTest is Base {
         uint256 cycleId = _requestRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
 
         assertEq(uint8(vault.currentCycleState(cycleId)), uint8(CycleState.Locked));
 
@@ -252,7 +252,7 @@ contract SyVaultRedeemTest is Base {
         uint256 cycleId = _requestRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
 
         _allocatorSettleCycle(cycleId, 100e18);
 
@@ -276,7 +276,7 @@ contract SyVaultRedeemTest is Base {
         uint256 cycleId = _requestRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
         _allocatorSettleCycle(cycleId, amount);
 
         uint256 aliceBefore = asset.balanceOf(alice);
@@ -297,7 +297,7 @@ contract SyVaultRedeemTest is Base {
         uint256 cycleId = _requestRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
 
         uint256 returnAmount = amount * 2; // 2x profit
         _allocatorSettleCycle(cycleId, returnAmount);
@@ -314,7 +314,7 @@ contract SyVaultRedeemTest is Base {
         uint256 cycleId = _requestRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
 
         uint256 returnAmount = amount / 2; // 50% loss
         _allocatorSettleCycle(cycleId, returnAmount);
@@ -337,7 +337,7 @@ contract SyVaultRedeemTest is Base {
         uint256 cycleId = _requestRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
         _allocatorSettleCycle(cycleId, amount);
 
         uint256 aliceBefore = asset.balanceOf(alice);
@@ -382,7 +382,7 @@ contract SyVaultRedeemTest is Base {
         uint256 cycleId = _requestRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
         _allocatorSettleCycle(cycleId, 100e18);
 
         assertEq(vault.maxRedeem(alice), shares);
@@ -396,10 +396,10 @@ contract SyVaultRedeemTest is Base {
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
 
-        vm.warp(cycle.cutoffEpoch * 1 hours + 1);
+        vm.warp(cycle.cutoffEpoch * EPOCH_DURATION + 1);
         assertEq(uint8(vault.currentCycleState(cycleId)), uint8(CycleState.Cutoff));
 
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
         assertEq(uint8(vault.currentCycleState(cycleId)), uint8(CycleState.Locked));
 
         _allocatorSettleCycle(cycleId, 100e18);

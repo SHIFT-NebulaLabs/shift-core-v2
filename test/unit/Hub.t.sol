@@ -2,6 +2,7 @@
 pragma solidity 0.8.34;
 
 import {Base} from "test/Base.t.sol";
+import {EPOCH_DURATION} from "src/types/Constants.sol";
 import {Hub} from "src/Hub.sol";
 import {VaultState, RedeemCycle} from "src/types/Types.sol";
 import {Hub__VaultNotActive, Hub__NotAuthorized, Hub__ZeroAddress} from "src/types/Errors.sol";
@@ -170,7 +171,7 @@ contract HubTest is Base {
 
         uint256 cycleId = _requestRedeem(alice, shares);
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
         _allocatorSettleCycle(cycleId, amount);
 
         vm.prank(alice);

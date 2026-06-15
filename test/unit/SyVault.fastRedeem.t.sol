@@ -9,7 +9,7 @@ import {
     SyVault__FastCycleNotSettled,
     SyVault__FastRedeemDisabled
 } from "src/types/Errors.sol";
-import {FAST_REDEEM_CUTOFF, FAST_REDEEM_LOCK_WINDOW, BASIS_POINTS} from "src/types/Constants.sol";
+import {FAST_REDEEM_CUTOFF, FAST_REDEEM_LOCK_WINDOW, BASIS_POINTS, EPOCH_DURATION} from "src/types/Constants.sol";
 
 contract SyVaultFastRedeemTest is Base {
 
@@ -106,7 +106,7 @@ contract SyVaultFastRedeemTest is Base {
         uint256 firstCycleId = _requestFastRedeem(alice, aliceShares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(firstCycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
 
         _allocatorSettleCycle(firstCycleId, 100e18);
 
@@ -132,7 +132,7 @@ contract SyVaultFastRedeemTest is Base {
         uint256 cycleId = _requestFastRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
         _allocatorSettleCycle(cycleId, amount);
 
         uint256 aliceBefore = asset.balanceOf(alice);
@@ -161,7 +161,7 @@ contract SyVaultFastRedeemTest is Base {
         uint256 cycleId = _requestFastRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
         _allocatorSettleCycle(cycleId, amount);
 
         uint256 aliceBefore = asset.balanceOf(alice);
@@ -182,7 +182,7 @@ contract SyVaultFastRedeemTest is Base {
         uint256 cycleId = _requestFastRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
         _allocatorSettleCycle(cycleId, amount);
 
         vm.prank(alice);
@@ -206,7 +206,7 @@ contract SyVaultFastRedeemTest is Base {
         uint256 cycleId = _requestFastRedeem(alice, shares);
 
         RedeemCycle memory cycle = vault.redeemCycleSchedule(cycleId);
-        vm.warp(cycle.lockEpoch * 1 hours + 1);
+        vm.warp(cycle.lockEpoch * EPOCH_DURATION + 1);
         _allocatorSettleCycle(cycleId, amount);
 
         uint256 claimable = vault.claimableFastRedeemRequest(cycleId, alice);
@@ -233,7 +233,7 @@ contract SyVaultFastRedeemTest is Base {
 
         // Fast cycle settles first (shorter window)
         RedeemCycle memory fastCycle = vault.redeemCycleSchedule(fastCycleId);
-        vm.warp(fastCycle.lockEpoch * 1 hours + 1);
+        vm.warp(fastCycle.lockEpoch * EPOCH_DURATION + 1);
         _allocatorSettleCycle(fastCycleId, bobAmount);
 
         vm.prank(bob);
@@ -242,7 +242,7 @@ contract SyVaultFastRedeemTest is Base {
 
         // Normal cycle settles later
         RedeemCycle memory normalCycle = vault.redeemCycleSchedule(normalCycleId);
-        vm.warp(normalCycle.lockEpoch * 1 hours + 1);
+        vm.warp(normalCycle.lockEpoch * EPOCH_DURATION + 1);
         _allocatorSettleCycle(normalCycleId, aliceAmount);
 
         vm.prank(alice);
