@@ -246,24 +246,26 @@ interface ISyVault {
         returns (uint256 requestId);
 
 
-    /// @notice Claim a settled deposit — mints shares to receiver.
+    /// @notice Claim a settled deposit — transfers shares from the vault to receiver.
     /// @dev    Does NOT transfer assets — already happened at requestDeposit(). Only callable via Hub.
-    ///         Shares minted = claimable assets / sharePrice at settlement epoch.
+    ///         Shares were minted to the vault at epochSettle(); this transfers
+    ///         claimable assets / sharePrice-at-settlement-epoch of them to the receiver.
     /// @param  assets      Claimable asset amount (pass 0 to claim entire claimable balance).
-    /// @param  receiver    Address that will receive minted shares.
+    /// @param  receiver    Address that will receive the shares.
     /// @param  controller  Controller that owns the deposit request.
-    /// @return shares      Shares minted to receiver.
+    /// @return shares      Shares transferred to receiver.
     /// @dev    EIP-7540: msg.sender must equal controller or be an operator approved by controller.
     function deposit(uint256 assets, address receiver, address controller)
         external
         returns (uint256 shares);
 
-    /// @notice Claim a settled deposit by specifying exact shares — mints shares to receiver.
+    /// @notice Claim a settled deposit by specifying exact shares — transfers shares to receiver.
     /// @dev    EIP-7540 compliance. Debits corresponding assets from claimable balance.
+    ///         Shares were minted to the vault at epochSettle() — transferred here, never minted.
     ///         msg.sender must equal controller or be an operator approved by controller.
     ///         Only callable via Hub.
-    /// @param  shares      Exact number of shares to mint.
-    /// @param  receiver    Address that will receive minted shares.
+    /// @param  shares      Exact number of shares to receive.
+    /// @param  receiver    Address that will receive the shares.
     /// @param  controller  Controller that owns the deposit request.
     /// @return assets      Assets debited from claimable balance.
     function mint(uint256 shares, address receiver, address controller)
@@ -624,6 +626,8 @@ interface ISyVault {
     function pendingDepositAssets() external view returns (uint256);
 
     /// @notice Total assets settled at epochSettle() but not yet claimed by depositors.
+    /// @dev    Monitoring view. These assets are part of TVL — their shares were minted to the
+    ///         vault at epochSettle() — so they are NOT excluded by tvlComponents().
     function totalClaimableDeposits() external view returns (uint256);
 
     /// @notice Total assets across all settled-but-unclaimed redeem positions.

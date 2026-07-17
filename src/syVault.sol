@@ -48,7 +48,9 @@ import {DepositRequestStatus} from "src/types/Types.sol";
 ///         Fast redeem:    requestFastRedeem → [lock] → returnCapital → settleRedeemBatch → redeem/withdraw
 ///
 ///         Key invariants:
-///         - Shares minted ONLY at deposit()/mint() claim — never at requestDeposit().
+///         - Deposit shares minted to the vault at epochSettle() (settlement price) — never at
+///           requestDeposit(). deposit()/mint() claims transfer from the vault's balance, so
+///           totalSupply reflects settled-but-unclaimed deposits at every block.
 ///         - Shares burned ONLY at settleRedeemBatch() — never before.
 ///         - returnCapital() MUST precede settleRedeemBatch(). Never invert.
 ///         - cancelRedeemRequest/cancelDepositRequest always available, even when paused.
@@ -87,7 +89,8 @@ contract SyVault is SyVaultRedeem {
 
     /// @dev Total settled-but-unclaimed deposit assets across all epochs.
     ///      Incremented at epochSettle when pending moves to claimable; decremented as users claim.
-    ///      Used by tvlComponents() to correctly exclude committed assets from pool contribution.
+    ///      Monitoring view only — the corresponding shares are minted to the vault at settlement,
+    ///      so these assets are part of TVL and are NOT excluded by tvlComponents() or maxDeposit().
     uint256 private s_totalClaimableDeposits;
 
     /*//////////////////////////////////////////////////////////////
@@ -135,7 +138,13 @@ contract SyVault is SyVaultRedeem {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Called by SyVaultEpoch.epochSettle() after effectivePrice is determined.
-    ///      Marks the epoch settled and deducts pendingAssets from s_totalPendingDeposits.
+    ///      Marks the epoch settled, deducts pendingAssets from s_totalPendingDeposits, and mints
+    ///      the epoch's owed shares to the vault at the settlement price. Claims transfer from
+    ///      this balance instead of minting, so totalSupply is truthful from settlement onward
+    ///      and the keeper share-price formula needs no off-chain virtual-share correction.
+    ///      Rounding: the single floor minted here is >= the sum of per-controller floors paid
+    ///      out at claim time, so the vault's share balance never underflows. The residual
+    ///      (at most a few wei per epoch) stays in the vault and accrues to all holders.
     function _onEpochSettle(uint256 _epochToSettle, uint256 _effectivePrice) internal override {
         // A zero settlement price would corrupt deposit claims (shares = assets / price = ∞).
         // This is defense-in-depth: setter validation makes this unreachable under correct config.
@@ -146,6 +155,8 @@ contract SyVault is SyVaultRedeem {
         if (pendingAssets > 0) {
             s_totalPendingDeposits   -= pendingAssets;
             s_totalClaimableDeposits += pendingAssets;
+            uint256 epochShares = (pendingAssets * SHARE_PRICE_PRECISION) / _effectivePrice;
+            if (epochShares > 0) i_share.mint(address(this), epochShares);
         }
     }
 
@@ -218,7 +229,8 @@ contract SyVault is SyVaultRedeem {
         shares = _consumeDepositEpochsByAssets(_controller, _assets);
         if (shares == 0) revert SyVault__NoClaimableDeposit();
         // Assets already reside in LiquidityPool — no transfer needed here.
-        i_share.mint(_receiver, shares);
+        // Shares were minted to the vault at epochSettle — transfer, never mint.
+        IERC20(address(i_share)).safeTransfer(_receiver, shares);
     }
 
     /// @inheritdoc ISyVault
@@ -231,7 +243,8 @@ contract SyVault is SyVaultRedeem {
         if (_shares == 0) revert SyVault__ZeroAmount();
         assets = _consumeDepositEpochsByShares(_controller, _shares);
         if (assets == 0) revert SyVault__NoClaimableDeposit();
-        i_share.mint(_receiver, _shares);
+        // Shares were minted to the vault at epochSettle — transfer, never mint.
+        IERC20(address(i_share)).safeTransfer(_receiver, _shares);
     }
 
     /// @inheritdoc ISyVault
@@ -623,8 +636,10 @@ contract SyVault is SyVaultRedeem {
         if (s_maxTVL == 0) {
             available = type(uint256).max;
         } else {
+            // Claimable deposits are already inside tvl via the shares minted to the vault
+            // at epochSettle — only pending (pre-settle) deposits are added on top.
             uint256 tvl  = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION;
-            uint256 used = tvl + s_totalPendingDeposits + s_totalClaimableDeposits;
+            uint256 used = tvl + s_totalPendingDeposits;
             available = used >= s_maxTVL ? 0 : s_maxTVL - used;
         }
         // If remaining room is below minDeposit, no deposit can succeed — signal unavailable.
@@ -660,7 +675,8 @@ contract SyVault is SyVaultRedeem {
             if (stale >= s_maxStalePriceEpochs) return DepositRequestStatus.StalePrice;
         }
         if (s_maxTVL > 0) {
-            uint256 used = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION + s_totalPendingDeposits + s_totalClaimableDeposits;
+            // Mirrors maxDeposit(): claimable deposits already count via vault-held shares.
+            uint256 used = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION + s_totalPendingDeposits;
             if (used >= s_maxTVL) return DepositRequestStatus.TVLExceeded;
         }
         return DepositRequestStatus.Ok;
@@ -726,10 +742,11 @@ contract SyVault is SyVaultRedeem {
     /// @inheritdoc ISyVault
     function tvlComponents() external view returns (uint256 poolContrib, uint256 stratReserved) {
         uint256 pool     = ILiquidityPool(i_liquidityPool).balance();
+        // Settled-but-unclaimed deposits (s_totalClaimableDeposits) are NOT excluded: their
+        // shares are minted to the vault at epochSettle, so the assets back circulating supply.
         uint256 reserved = _redeemDue()
                          + s_claimableRedeemAssets
-                         + s_totalPendingDeposits
-                         + s_totalClaimableDeposits;
+                         + s_totalPendingDeposits;
         if (pool >= reserved) {
             poolContrib   = pool - reserved;
             stratReserved = 0;

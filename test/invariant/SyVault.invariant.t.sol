@@ -31,8 +31,9 @@ contract Handler is Test {
     uint256   internal _seed;
 
     // Ghost variables for invariant checking
-    uint256 public ghost_totalSharesMinted;
     uint256 public ghost_totalSharesBurned;
+    uint256 public ghost_depositSharesToVault;  // minted to the vault at epochSettle (B1)
+    uint256 public ghost_depositSharesClaimed;  // transferred out of the vault at deposit() claims
 
     constructor(
         SyVault         _vault,
@@ -92,7 +93,7 @@ contract Handler is Test {
 
         vm.prank(actor);
         try hub.deposit(VAULT_ID, 0, actor, actor) returns (uint256 shares) {
-            ghost_totalSharesMinted += shares;
+            ghost_depositSharesClaimed += shares;
         } catch {}
     }
 
@@ -102,8 +103,13 @@ contract Handler is Test {
         if (vault.stalePriceEpochs() == 0) {
             vm.warp(block.timestamp + EPOCH_DURATION);
         }
+        // Vault balance delta isolates the deposit shares minted to the vault at settle —
+        // performance fee shares go to feeRecipient and never touch the vault balance.
+        uint256 balBefore = syShare.balanceOf(address(vault));
         vm.prank(keeper);
-        try vault.epochSettle(INITIAL_PRICE) {} catch {}
+        try vault.epochSettle(INITIAL_PRICE) {
+            ghost_depositSharesToVault += syShare.balanceOf(address(vault)) - balBefore;
+        } catch {}
     }
 
     // ── Normal redeem ─────────────────────────────────────────────
@@ -196,9 +202,16 @@ contract SyVaultInvariantTest is Base {
         assertGe(poolBal, redeemDue + claimable + pending);
     }
 
-    /// @dev Shares held by vault contract == pendingRedeemShares.
-    function invariant_vaultShareBalance_eq_locked() external view {
-        assertEq(syShare.balanceOf(address(vault)), vault.pendingRedeemShares());
+    /// @dev Shares held by vault contract == locked redeem shares + unclaimed deposit shares.
+    ///      Deposit shares are minted to the vault at epochSettle (B1) and leave only via claims;
+    ///      floor-rounding dust stays inside the minted−claimed remainder, so equality is exact.
+    function invariant_vaultShareBalance_accounting() external view {
+        assertEq(
+            syShare.balanceOf(address(vault)),
+            vault.pendingRedeemShares()
+                + handler.ghost_depositSharesToVault()
+                - handler.ghost_depositSharesClaimed()
+        );
     }
 
     /// @dev effectiveSupply can never exceed totalSupply.
