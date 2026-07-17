@@ -4,7 +4,7 @@ pragma solidity 0.8.34;
 import {Base} from "test/Base.t.sol";
 import {SHARE_PRICE_PRECISION} from "src/types/Constants.sol";
 
-/// @dev B1 mint-at-settle — regression suite for the shiftEUR PPS deviation incident.
+/// @dev B1 mint-at-settle — regression suite for the PPS deviation incident.
 ///
 ///      Root cause of the incident: settled-but-unclaimed deposits were excluded from the
 ///      supply denominator (shares minted lazily at claim) while their assets were reserved
