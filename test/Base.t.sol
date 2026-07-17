@@ -47,9 +47,20 @@ abstract contract Base is Test {
                              CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
-    uint256 internal constant INITIAL_PRICE = 1e18; // 1:1 share price at deploy
+    /// @dev Share price is denominated in raw asset units per 1e18 shares, so the 1:1 price
+    ///      is one whole asset unit — 1e18 for an 18-decimal asset, 1e6 for USDC. Derived from
+    ///      _assetDecimals() so suites can re-run against low-decimal assets unchanged.
+    uint256 internal INITIAL_PRICE;
+
+    /// @dev One whole unit of the asset (10 ** decimals).
+    uint256 internal ONE_ASSET;
 
     uint256 internal VAULT_ID;
+
+    /// @dev Override in a suite to re-run it against a different asset precision.
+    function _assetDecimals() internal view virtual returns (uint8) {
+        return 18;
+    }
 
     /*//////////////////////////////////////////////////////////////
                                SET UP
@@ -57,7 +68,10 @@ abstract contract Base is Test {
 
     function setUp() public virtual {
         // 1. Asset token
-        asset = new MockERC20("Mock USDC", "mUSDC", 18);
+        uint8 dec = _assetDecimals();
+        ONE_ASSET     = 10 ** dec;
+        INITIAL_PRICE = ONE_ASSET; // 1:1 — raw asset units per 1e18 shares
+        asset = new MockERC20("Mock USDC", "mUSDC", dec);
 
         // 2. AddressRegistry — admin is the sole writer (plays AdminGateway)
         registry = new AddressRegistry(admin);

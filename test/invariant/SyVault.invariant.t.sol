@@ -9,7 +9,7 @@ import {LiquidityPool} from "src/LiquidityPool.sol";
 import {Hub} from "src/Hub.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {RedeemCycle} from "src/types/Types.sol";
-import {EPOCH_DURATION} from "src/types/Constants.sol";
+import {EPOCH_DURATION, SHARE_PRICE_PRECISION} from "src/types/Constants.sol";
 
 /// @dev Handler that is called randomly by the Foundry invariant fuzzer.
 ///      Receives all contract references from SyVaultInvariantTest.
@@ -95,6 +95,52 @@ contract Handler is Test {
         try hub.deposit(VAULT_ID, 0, actor, actor) returns (uint256 shares) {
             ghost_depositSharesClaimed += shares;
         } catch {}
+    }
+
+    /// @dev Partial claim by assets — exercises the `_assets != 0` branch of the claim loop,
+    ///      which stops mid-epoch and leaves a residual the next claim must pick up.
+    function claimDepositPartial(uint256 fraction) external {
+        address actor  = _actor();
+        uint256 assets = _claimableAssets(actor);
+        if (assets == 0) return;
+
+        fraction = bound(fraction, 1, 99);
+        uint256 slice = (assets * fraction) / 100;
+        if (slice == 0) return;
+
+        vm.prank(actor);
+        try hub.deposit(VAULT_ID, slice, actor, actor) returns (uint256 shares) {
+            ghost_depositSharesClaimed += shares;
+        } catch {}
+    }
+
+    /// @dev Claim via mint() — the exact-shares path, which rounds consumed assets UP and then
+    ///      re-floors the shares. It draws from the same vault balance as deposit() claims, so
+    ///      the balance invariant must hold across an arbitrary interleaving of the two.
+    function claimDepositExactShares(uint256 fraction) external {
+        address actor  = _actor();
+        uint256 assets = _claimableAssets(actor);
+        if (assets == 0) return;
+
+        // Every epoch here settles at INITIAL_PRICE, so the conversion is exact.
+        uint256 maxShares = (assets * SHARE_PRICE_PRECISION) / INITIAL_PRICE;
+        fraction = bound(fraction, 1, 100);
+        uint256 shares = (maxShares * fraction) / 100;
+        if (shares == 0) return;
+
+        uint256 balBefore = syShare.balanceOf(actor);
+        vm.prank(actor);
+        try hub.mint(VAULT_ID, shares, actor, actor) {
+            ghost_depositSharesClaimed += syShare.balanceOf(actor) - balBefore;
+        } catch {}
+    }
+
+    /// @dev Settled-but-unclaimed deposit assets owed to `who`, summed across every epoch.
+    function _claimableAssets(address who) internal view returns (uint256 total) {
+        (uint256[] memory ids,) = vault.getDepositRequestIds(who, 0, type(uint256).max);
+        for (uint256 i; i < ids.length; ++i) {
+            total += vault.claimableDepositRequest(ids[i], who);
+        }
     }
 
     // ── Epoch ─────────────────────────────────────────────────────
