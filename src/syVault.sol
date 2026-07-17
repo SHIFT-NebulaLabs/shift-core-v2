@@ -744,8 +744,11 @@ contract SyVault is SyVaultRedeem {
         uint256 pool     = ILiquidityPool(i_liquidityPool).balance();
         // Settled-but-unclaimed deposits (s_totalClaimableDeposits) are NOT excluded: their
         // shares are minted to the vault at epochSettle, so the assets back circulating supply.
-        uint256 reserved = _redeemDue()
-                         + s_claimableRedeemAssets
+        // redeemDue is NOT excluded either: locked redeem shares stay in effectiveSupply() until
+        // settleRedeemBatch burns them, so their backing assets must stay in the numerator —
+        // a fixed redeemDue against floating shares would misattribute epoch P&L.
+        // redeemDue remains a cash-liquidity reservation in LiquidityPool.allocatorAllowance().
+        uint256 reserved = s_claimableRedeemAssets
                          + s_totalPendingDeposits;
         if (pool >= reserved) {
             poolContrib   = pool - reserved;

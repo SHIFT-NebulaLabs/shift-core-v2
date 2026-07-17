@@ -52,6 +52,40 @@ contract SyVaultEpochSettleTest is Base {
         vault.epochSettle(highPrice);
     }
 
+    /// @dev The guard accepts a move landing exactly on the configured limit (reject is
+    ///      strict >), in both directions.
+    function testFuzz_DeltaGuard_ExactBoundaryAccepted(uint256 delta, bool up) external {
+        delta = bound(delta, 1, 500);
+        vm.prank(admin);
+        vault.setMaxSharePriceDelta(delta);
+
+        uint256 maxDiff  = (INITIAL_PRICE * delta) / BASIS_POINTS;
+        uint256 proposed = up ? INITIAL_PRICE + maxDiff : INITIAL_PRICE - maxDiff;
+
+        _warpEpochs(1);
+        vm.prank(keeper);
+        vault.epochSettle(proposed);
+
+        assertEq(vault.latestSharePrice(), proposed, "boundary move must settle");
+    }
+
+    /// @dev Exact-check regression: one wei past the limit must revert. The floored form
+    ///      truncated (diff * BASIS_POINTS) / prev, so a 50.99 bp move floored to 50 and
+    ///      passed a 50 bp limit — each epoch could leak up to ~1 bp past the guard.
+    function testFuzz_DeltaGuard_OneWeiAboveBoundaryReverts(uint256 delta, bool up) external {
+        delta = bound(delta, 1, 500);
+        vm.prank(admin);
+        vault.setMaxSharePriceDelta(delta);
+
+        uint256 maxDiff  = (INITIAL_PRICE * delta) / BASIS_POINTS;
+        uint256 proposed = up ? INITIAL_PRICE + maxDiff + 1 : INITIAL_PRICE - maxDiff - 1;
+
+        _warpEpochs(1);
+        vm.prank(keeper);
+        vm.expectRevert(SyVault__SharePriceDeltaExceeded.selector);
+        vault.epochSettle(proposed);
+    }
+
     /*//////////////////////////////////////////////////////////////
                       epochSettle — SHARE PRICE
     //////////////////////////////////////////////////////////////*/

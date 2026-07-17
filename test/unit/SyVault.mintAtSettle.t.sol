@@ -27,15 +27,20 @@ abstract contract SyVaultB1MintAtSettleBase is Base {
                               HELPERS
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev Share price exactly as the off-chain Keeper computes it.
-    ///      Equity = 0 in these tests — no capital is deployed to strategies,
-    ///      so TVL is just the pool contribution.
-    function _keeperPrice() internal view returns (uint256) {
+    /// @dev Share price exactly as the off-chain Keeper computes it, with `equity` standing in
+    ///      for the strategy mark the keeper supplies off-chain:
+    ///          PPS = (Equity + poolContrib − stratReserved) × 1e18 / effectiveSupply
+    function _keeperPriceWithEquity(uint256 equity) internal view returns (uint256) {
         (uint256 poolContrib, uint256 stratReserved) = vault.tvlComponents();
-        uint256 tvl = poolContrib - stratReserved;
+        uint256 tvl = equity + poolContrib - stratReserved;
         uint256 supply = vault.effectiveSupply();
         if (supply == 0) return INITIAL_PRICE;
         return (tvl * SHARE_PRICE_PRECISION) / supply;
+    }
+
+    /// @dev Keeper price with nothing deployed: Equity = 0, so TVL is just the pool contribution.
+    function _keeperPrice() internal view returns (uint256) {
+        return _keeperPriceWithEquity(0);
     }
 
     /// @dev Request a deposit for `who` and settle the epoch at `price`.
@@ -328,6 +333,87 @@ abstract contract SyVaultB1MintAtSettleBase is Base {
             uint8(DepositRequestStatus.TVLExceeded),
             "still full after the claim - no capacity conjured by claiming"
         );
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                     REDEEM-VIEW ALIGNMENT
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev The redeem-side mirror of the deposit incident. A locked redeemer is still a
+    ///      shareholder — the payout floats with the price until settleRedeemBatch burns the
+    ///      shares. The old views subtracted a FIXED redeemDue (priced at the previous epoch)
+    ///      from the numerator while dropping the floating shares from the denominator, so an
+    ///      epoch P&L move of d was reported as d × S/(S−L): the lockers' share of the P&L
+    ///      landed on unlocked holders only, with a growing feedback loop once L > S/2.
+    ///      Post-alignment the keeper price must equal equity/totalSupply exactly — no
+    ///      dependence on how much of the supply is locked.
+    function testFuzz_LockedRedeemPnlSharedProRata(
+        uint256 amount,
+        uint256 lockBps,
+        uint256 driftBps,
+        bool gain
+    ) external {
+        amount   = bound(amount, ONE_ASSET, 100_000 * ONE_ASSET);
+        lockBps  = bound(lockBps, 100, 9_000);  // 1%–90% of supply locked (§6.3 sweep 10/50/90)
+        driftBps = bound(driftBps, 1, 2_000);   // epoch P&L up to ±20%
+
+        uint256 aliceShares = _giveShares(alice, amount);
+
+        // Deploy the whole book so TVL is pure keeper-marked equity.
+        uint256 deployed = pool.balance();
+        vm.prank(allocator);
+        pool.deployCapital(deployed);
+
+        _requestRedeem(alice, (aliceShares * lockBps) / 10_000);
+
+        uint256 equity = gain
+            ? amount + (amount * driftBps) / 10_000
+            : amount - (amount * driftBps) / 10_000;
+
+        // Pro-rata fair value over the FULL supply — locked shares included.
+        uint256 fair = (equity * SHARE_PRICE_PRECISION) / syShare.totalSupply();
+
+        assertEq(
+            _keeperPriceWithEquity(equity),
+            fair,
+            "epoch P&L must be shared pro-rata; locked fraction must not amplify the move"
+        );
+    }
+
+    /// @dev settleRedeemBatch is the atomic swap: shares burn out of the denominator in the
+    ///      same transaction their assets leave the numerator (into claimableRedeemAssets).
+    ///      When the allocator returns exactly shares x price, the keeper price is identical
+    ///      before and after — a redeem settlement is price-neutral, like a deposit claim.
+    function testFuzz_SettleRedeemBatchPriceNeutral(uint256 amount, uint256 redeemAssets) external {
+        amount       = bound(amount, 2 * ONE_ASSET, 100_000 * ONE_ASSET);
+        redeemAssets = bound(redeemAssets, 1, amount / 2);
+
+        uint256 aliceShares = _giveShares(alice, amount);
+        uint256 lockShares  = (redeemAssets * SHARE_PRICE_PRECISION) / INITIAL_PRICE; // exact
+        vm.assume(lockShares > 0 && lockShares <= aliceShares);
+
+        uint256 deployed = pool.balance();
+        vm.prank(allocator);
+        pool.deployCapital(deployed);
+
+        uint256 openEpoch = vault.currentEpoch();
+        uint256 cycleId   = _requestRedeem(alice, lockShares);
+        _warpToNormalLock(openEpoch);
+
+        // Strategy pays the cycle out: equity shrinks by exactly what returns to the pool.
+        uint256 equityRemaining = amount - redeemAssets;
+        asset.mint(allocator, redeemAssets);
+        vm.startPrank(allocator);
+        asset.approve(address(pool), redeemAssets);
+        pool.returnCapital(redeemAssets);
+
+        uint256 priceBefore = _keeperPriceWithEquity(equityRemaining);
+        vault.settleRedeemBatch(cycleId, redeemAssets);
+        uint256 priceAfter = _keeperPriceWithEquity(equityRemaining);
+        vm.stopPrank();
+
+        assertEq(priceBefore, priceAfter, "redeem settlement must not move the keeper price");
+        assertEq(priceBefore, INITIAL_PRICE, "price held at fair value through the cycle");
     }
 
     /*//////////////////////////////////////////////////////////////

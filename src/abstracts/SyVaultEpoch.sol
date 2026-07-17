@@ -128,10 +128,11 @@ abstract contract SyVaultEpoch is SyVaultBase {
             // (initialSharePrice = 0) while a delta guard is active. Revert so the stale-price
             // path (epochSettle(0)) is used until the state is corrected.
             if (_prev == 0) revert SyVault__ZeroSettlementPrice();
-            uint256 delta = _proposed > _prev
-                ? ((_proposed - _prev) * BASIS_POINTS) / _prev
-                : ((_prev - _proposed) * BASIS_POINTS) / _prev;
-            if (delta > s_maxSharePriceDelta) revert SyVault__SharePriceDeltaExceeded();
+            // Exact cross-multiplied check — no integer-floor leak. The floored form
+            // (diff × BASIS_POINTS / _prev) truncates: a 50.99 bp move floors to 50 and passes
+            // a 50 bp limit, letting each epoch leak up to ~1 bp past the configured guard.
+            uint256 diff = _proposed > _prev ? _proposed - _prev : _prev - _proposed;
+            if (diff * BASIS_POINTS > s_maxSharePriceDelta * _prev) revert SyVault__SharePriceDeltaExceeded();
         }
         return _proposed;
     }

@@ -604,8 +604,10 @@ interface ISyVault {
     /// @notice Total shares locked in unsettled redeem cycles.
     function pendingRedeemShares() external view returns (uint256);
 
-    /// @notice Shares in active circulation, excluding locked redeem shares.
-    /// @dev    Keeper denominator for sharePrice = TVL / effectiveSupply().
+    /// @notice The full economic supply — alias of totalSupply(), name kept for ABI stability.
+    /// @dev    Keeper denominator for sharePrice = TVL / effectiveSupply(). Locked redeem shares
+    ///         are included: they are burned, and their assets excluded, only at
+    ///         settleRedeemBatch(), atomically.
     function effectiveSupply() external view returns (uint256);
 
     /// @notice Investable liquidity: LiquidityPool.balance − redeemDue − claimableRedeemAssets.

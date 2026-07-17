@@ -476,12 +476,14 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         return s_totalLockedShares;
     }
 
-    /// @notice Shares in active circulation, excluding locked redeem shares.
-    /// @dev    Keeper denominator: effectiveSupply = totalSupply() − pendingRedeemShares().
+    /// @notice Keeper denominator for the share price — the full economic supply.
+    /// @dev    Alias of totalSupply(); the name is kept for ABI stability. Locked redeem shares
+    ///         are NOT excluded: a locked redeemer's payout floats with the price until
+    ///         settleRedeemBatch() burns the shares, so excluding them (against a redeemDue
+    ///         numerator fixed at the previous price) would misattribute epoch P&L to unlocked
+    ///         holders only, amplified by S/(S−L).
     function effectiveSupply() external view returns (uint256) {
-        uint256 supply = i_share.totalSupply();
-        uint256 locked = s_totalLockedShares;
-        return supply > locked ? supply - locked : 0;
+        return i_share.totalSupply();
     }
 
     /// @notice Total assets across all settled-but-unclaimed redeem positions.

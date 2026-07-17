@@ -229,13 +229,12 @@ contract SyVaultInvariantTest is Base {
                            CORE INVARIANTS
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev totalSupply == effectiveSupply + pendingRedeemShares (locked shares are still in supply).
+    /// @dev effectiveSupply is an alias of totalSupply — locked redeemers stay in the price
+    ///      denominator until settleRedeemBatch burns their shares. pendingRedeemShares never
+    ///      exceeds what actually exists.
     function invariant_totalSupply_accounting() external view {
-        uint256 total     = syShare.totalSupply();
-        uint256 effective = vault.effectiveSupply();
-        uint256 locked    = vault.pendingRedeemShares();
-
-        assertEq(total, effective + locked);
+        assertEq(vault.effectiveSupply(), syShare.totalSupply());
+        assertLe(vault.pendingRedeemShares(), syShare.totalSupply());
     }
 
     /// @dev Pool balance must be >= reserved amounts at all times.

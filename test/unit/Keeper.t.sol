@@ -53,17 +53,16 @@ contract KeeperTest is Base {
         assertEq(computedSharePrice, INITIAL_PRICE);
     }
 
-    function test_sharePriceFormula_effectiveSupply_excludesLockedRedeemShares() external {
+    function test_sharePriceFormula_effectiveSupply_includesLockedRedeemShares() external {
         uint256 depositAmount = 100e18;
         uint256 shares        = _giveShares(alice, depositAmount);
 
         uint256 redeemShares = shares / 2;
         _requestRedeem(alice, redeemShares);
 
-        // effectiveSupply = totalSupply - lockedRedeemShares
-        uint256 totalSupply     = syShare.totalSupply();
-        uint256 effectiveSupply = vault.effectiveSupply();
-        assertEq(effectiveSupply, totalSupply - redeemShares);
+        // Locked redeemers are still shareholders until settleRedeemBatch burns them:
+        // effectiveSupply = totalSupply, locked shares tracked separately.
+        assertEq(vault.effectiveSupply(), syShare.totalSupply());
         assertEq(vault.pendingRedeemShares(), redeemShares);
     }
 

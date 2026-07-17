@@ -28,7 +28,9 @@ interface ILiquidityPool {
 
     /// @notice Transfer assets from the pool to the Allocator for deployment.
     /// @dev    onlyAllocator. nonReentrant. amount must not exceed allocatorAllowance().
-    ///         Sets allocatorActive = true on the paired syVault before transfer.
+    ///         Does NOT touch allocatorActive — the Allocator bot MUST set it via
+    ///         SyVault.setAllocatorActive(true) before capital leaves the pool, and clear
+    ///         it only once final cross-chain state is visible.
     /// @param  amount  Assets to deploy.
     function deployCapital(uint256 amount) external;
 
