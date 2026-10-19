@@ -28,3 +28,14 @@ depth = 15
 [lint]
 # Project uses s_/i_ prefix conventions — suppress conflicting Foundry linter suggestions.
 exclude_lints = ["screaming-snake-case-immutable", "mixed-case-variable"]
+
+# Robinhood is not a built-in explorer chain in Foundry 1.5.1.
+[etherscan.robinhood]
+chain = 4663
+url = "https://api.blockscout.com/4663/api"
+key = "${BLOCKSCOUT_API_KEY}"
+
+[etherscan.arc]
+chain = 5042
+url = "https://api.blockscout.com/5042/api"
+key = "${BLOCKSCOUT_API_KEY}"

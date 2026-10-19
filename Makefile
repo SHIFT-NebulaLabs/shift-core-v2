@@ -5,6 +5,10 @@
 
 # Load .env if it exists (- prefix suppresses error when missing).
 -include .env
+# Optional per-deployment overlay; .env remains the source of shared credentials.
+ifneq ($(strip $(ENV_FILE)),)
+include $(ENV_FILE)
+endif
 export
 
 # .PHONY declares targets that are not files — Make always runs them
@@ -86,14 +90,22 @@ clean:
 	forge clean
 
 # ─── Deploy — Protocol ────────────────────────────────────────────────────────
+# Optional .env: VERIFIER=blockscout and VERIFIER_URL=<explorer API URL>.
+# For the PRO API, also set BLOCKSCOUT_API_KEY from dev.blockscout.com.
+# Leave unset to retain Foundry's default verification provider.
+
+PROTOCOL_VERIFY_ARGS = $(if $(VERIFIER),--verifier "$(VERIFIER)") $(if $(VERIFIER_URL),--verifier-url "$(VERIFIER_URL)") $(if $(strip $(BLOCKSCOUT_API_KEY)),--verifier-api-key "$$BLOCKSCOUT_API_KEY")
+# Optional script flags, e.g. --offline to skip Foundry 1.5.1's unsupported
+# explorer trace lookup on Robinhood while still using the configured RPC.
+PROTOCOL_SCRIPT_ARGS ?=
 
 deploy-singletons:
-	forge script script/protocol/DeploySingletons.s.sol \
-		--rpc-url $(RPC_URL) --broadcast --verify --account $(DEPLOYER_ACCOUNT)
+	$(if $(strip $(BLOCKSCOUT_API_KEY)),ETHERSCAN_API_KEY="$$BLOCKSCOUT_API_KEY") forge script script/protocol/DeploySingletons.s.sol $(PROTOCOL_SCRIPT_ARGS) \
+		--rpc-url $(RPC_URL) --broadcast --verify $(PROTOCOL_VERIFY_ARGS) --account $(DEPLOYER_ACCOUNT)
 
 deploy-vault:
-	forge script script/protocol/DeployVault.s.sol \
-		--rpc-url $(RPC_URL) --broadcast --verify --account $(DEPLOYER_ACCOUNT)
+	$(if $(strip $(BLOCKSCOUT_API_KEY)),ETHERSCAN_API_KEY="$$BLOCKSCOUT_API_KEY") forge script script/protocol/DeployVault.s.sol $(PROTOCOL_SCRIPT_ARGS) \
+		--rpc-url $(RPC_URL) --broadcast --verify $(PROTOCOL_VERIFY_ARGS) --account $(DEPLOYER_ACCOUNT)
 
 activate-vault-schedule:
 	forge script script/protocol/ActivateVault.s.sol:ActivateVault_Schedule \
