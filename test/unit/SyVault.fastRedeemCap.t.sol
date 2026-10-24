@@ -165,6 +165,27 @@ contract SyVaultFastRedeemCapTest is Base {
         );
     }
 
+    function test_requestFastRedeemStatus_Ok_afterFullCycleSettled() external {
+        vm.prank(admin);
+        vault.setFastRedeemCapBps(3000); // 30%
+
+        _giveShares(alice, 100e18);
+        _giveShares(bob, 100e18);
+
+        // Alice fills the cap (60e18 = 30% of 200e18 TVL) and the cycle settles.
+        uint256 cycleId = _requestFastRedeem(alice, 60e18);
+        _warpEpochs(20);
+        _allocatorSettleCycle(cycleId, 60e18);
+
+        // The next request opens a new, empty cycle, so the settled cycle's shares must not count.
+        assertEq(
+            uint8(vault.requestFastRedeemStatus(bob)),
+            uint8(FastRedeemRequestStatus.Ok)
+        );
+        uint256 newCycleId = _requestFastRedeem(bob, 10e18);
+        assertGt(newCycleId, cycleId);
+    }
+
     /*//////////////////////////////////////////////////////////////
               CAP CHANGE DOES NOT AFFECT IN-FLIGHT CYCLES
     //////////////////////////////////////////////////////////////*/

@@ -356,6 +356,25 @@ contract SyVaultDepositTest is Base {
         assertEq(uint8(vault.requestDepositStatus(alice)), 2); // NotWhitelisted = 2
     }
 
+    function test_requestDepositStatus_TVLExceeded_whenRoomBelowMinDeposit() external {
+        vm.startPrank(admin);
+        vault.setMinDeposit(50 * ONE_ASSET);
+        vault.setMaxTvl(1_000 * ONE_ASSET);
+        vm.stopPrank();
+
+        _giveShares(alice, 990 * ONE_ASSET); // 10 assets of room left, below the 50 minimum
+
+        // maxDeposit() closes the vault and requestDeposit() reverts for any allowed amount ...
+        assertEq(vault.maxDeposit(bob), 0);
+        _giveAssets(bob, 50 * ONE_ASSET);
+        vm.prank(bob);
+        vm.expectRevert(SyVault__DepositNotAllowed.selector);
+        hub.requestDeposit(VAULT_ID, 50 * ONE_ASSET, bob, bob);
+
+        // ... so the pre-flight view must not report Ok.
+        assertEq(uint8(vault.requestDepositStatus(bob)), uint8(DepositRequestStatus.TVLExceeded));
+    }
+
     /*//////////////////////////////////////////////////////////////
                         minDeposit enforcement
     //////////////////////////////////////////////////////////////*/

@@ -547,7 +547,10 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
             && s_redeemCycles[s_currentFastCycleId].shares > 0)
             return FastRedeemRequestStatus.FastCycleSettlementPending;
         // Cap check: if the current fast cycle already reached the cap, signal CapExceeded.
-        if (s_fastRedeemCapBps < BASIS_POINTS && s_currentFastCycleId != 0) {
+        // Past its cutoff the cycle is settled or empty (checked above), and requestFastRedeem()
+        // opens a new cycle with no shares (_openOrReuseCycle), so only an open cycle counts.
+        if (s_fastRedeemCapBps < BASIS_POINTS && s_currentFastCycleId != 0
+            && currentEpoch() < s_redeemCycles[s_currentFastCycleId].cutoffEpoch) {
             uint256 tvl = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION;
             uint256 capAssets = (tvl * s_fastRedeemCapBps) / BASIS_POINTS;
             uint256 capShares = (capAssets * SHARE_PRICE_PRECISION) / s_sharePrice;

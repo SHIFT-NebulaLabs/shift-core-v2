@@ -678,6 +678,8 @@ contract SyVault is SyVaultRedeem {
             // Mirrors maxDeposit(): claimable deposits already count via vault-held shares.
             uint256 used = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION + s_totalPendingDeposits;
             if (used >= s_maxTVL) return DepositRequestStatus.TVLExceeded;
+            // Mirrors maxDeposit(): room below minDeposit admits no deposit.
+            if (s_minDeposit > 0 && s_maxTVL - used < s_minDeposit) return DepositRequestStatus.TVLExceeded;
         }
         return DepositRequestStatus.Ok;
     }
