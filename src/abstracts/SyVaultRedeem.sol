@@ -147,6 +147,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         // No active redeem of any kind allowed.
         if (s_activeRedeemCycleId[_controller] != 0) revert SyVault__RedeemRequestAlreadyPending();
 
+        if (_shares > _liquidFastShares()) revert SyVault__FastRedeemCapExceeded();
         requestId = _openOrReuseCycle(CycleType.Fast);
 
         // Per-cycle cap: total shares in this fast cycle must not exceed fastRedeemCapBps % of TVL.
@@ -183,6 +184,7 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
         if (cycle.settled)                    revert SyVault__CycleAlreadySettled();
         if (currentEpoch() < cycle.lockEpoch) revert SyVault__CycleNotLocked();
 
+        _checkSettlementFunds(cycle, _returnedAmount);
         uint256 cycleShares = cycle.shares;
 
         cycle.returnedAmount = _returnedAmount;
@@ -321,6 +323,12 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HELPERS
     //////////////////////////////////////////////////////////////*/
+
+    /// @dev Product-specific cash backing available for additional fast requests, in share units.
+    function _liquidFastShares() internal view virtual returns (uint256) { return type(uint256).max; }
+
+    /// @dev Product-specific checks before a locked cycle becomes an irrevocable claim.
+    function _checkSettlementFunds(RedeemCycle storage, uint256) internal view virtual {}
 
     /// @dev Open or reuse the current cycle for the given type.
     ///      Advances to a new cycle id if no cycle exists or current one is past cutoff.
@@ -546,8 +554,10 @@ abstract contract SyVaultRedeem is SyVaultEpoch {
             && !s_redeemCycles[s_currentFastCycleId].settled
             && s_redeemCycles[s_currentFastCycleId].shares > 0)
             return FastRedeemRequestStatus.FastCycleSettlementPending;
+        uint256 liquid = _liquidFastShares();
+        if (liquid == 0 || liquid < s_minRedeem) return FastRedeemRequestStatus.CapExceeded;
         // Cap check: if the current fast cycle already reached the cap, signal CapExceeded.
-        if (s_fastRedeemCapBps < BASIS_POINTS && s_currentFastCycleId != 0) {
+        if (s_fastRedeemCapBps < BASIS_POINTS && s_currentFastCycleId != 0 && !s_redeemCycles[s_currentFastCycleId].settled) {
             uint256 tvl = (s_sharePrice * i_share.totalSupply()) / SHARE_PRICE_PRECISION;
             uint256 capAssets = (tvl * s_fastRedeemCapBps) / BASIS_POINTS;
             uint256 capShares = (capAssets * SHARE_PRICE_PRECISION) / s_sharePrice;

@@ -96,7 +96,7 @@ contract TxFlowNavKeeper is ITxFlowNavKeeper, EIP712, ReentrancyGuard {
         if (
             vault.keeper() != address(this) || vault.allocatorActive()
                 || vault.performanceFeeBps() != PERFORMANCE_FEE_BPS || vault.maintenanceFeeBps() != 0
-                || vault.fastRedeemEnabled()
+                || vault.fastRedeemCapBps() > 1_000
         ) revert TxFlowNavKeeper__InvalidVaultState();
 
         if (
@@ -151,6 +151,8 @@ contract TxFlowNavKeeper is ITxFlowNavKeeper, EIP712, ReentrancyGuard {
                 vault.performanceFeeBps(),
                 vault.maintenanceFeeBps(),
                 vault.fastRedeemEnabled(),
+                vault.fastRedeemCapBps(),
+                vault.fastRedeemFeeBps(),
                 vault.feeRecipient(),
                 vault.maxSharePriceDelta(),
                 vault.stalePriceEpochs(),

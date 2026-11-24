@@ -14,6 +14,9 @@ import {VaultState} from "src/types/Types.sol";
 import {ITxFlowNavKeeper} from "src/integrations/txflow/ITxFlowNavKeeper.sol";
 import {TxFlowNavKeeper} from "src/integrations/txflow/TxFlowNavKeeper.sol";
 
+import {TxFlowVault} from "src/integrations/txflow/TxFlowVault.sol";
+import {TxFlowLiquidityPool} from "src/integrations/txflow/TxFlowLiquidityPool.sol";
+
 contract TxFlowNavKeeperTest is Test {
     address private constant NATIVE_USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     uint256 private constant INTAKE = 10_000e6;
@@ -22,7 +25,7 @@ contract TxFlowNavKeeperTest is Test {
     uint64 private constant MAX_LIFETIME = 120;
 
     MockERC20 private asset;
-    SyVault private vault;
+    TxFlowVault private vault;
     SyShare private share;
     LiquidityPool private pool;
     Hub private hub;
@@ -51,8 +54,8 @@ contract TxFlowNavKeeperTest is Test {
         hub = new Hub(address(registry));
         address predictedVault = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 2);
         share = new SyShare("Shift TxFlow", "stx", predictedVault);
-        pool = new LiquidityPool(address(asset), predictedVault);
-        vault = new SyVault(
+        pool = new TxFlowLiquidityPool(address(asset), predictedVault);
+        vault = new TxFlowVault(
             address(asset),
             address(share),
             address(pool),
@@ -61,8 +64,7 @@ contract TxFlowNavKeeperTest is Test {
             operator,
             executor,
             feeRecipient,
-            INITIAL_PRICE,
-            false
+            INITIAL_PRICE
         );
         assertEq(address(vault), predictedVault);
         vaultId = registry.registerVault(address(vault), address(pool), address(share), address(0));
@@ -85,10 +87,10 @@ contract TxFlowNavKeeperTest is Test {
         _startAndDeposit();
         vm.startPrank(executor);
         vault.setAllocatorActive(true);
-        pool.deployCapital(INTAKE);
+        pool.deployCapital(pool.allocatorAllowance());
         vault.setAllocatorActive(false);
         vm.stopPrank();
-        assertEq(asset.balanceOf(executor), INTAKE);
+        assertEq(asset.balanceOf(executor), INTAKE * 9 / 10);
         assertEq(asset.balanceOf(address(guard)), 0);
 
         uint256 grossPrice = 1_010_000;
@@ -110,14 +112,98 @@ contract TxFlowNavKeeperTest is Test {
         uint256 payout = shares * vault.latestSharePrice() / 1e18;
         vm.startPrank(executor);
         vault.setAllocatorActive(true);
-        asset.approve(address(pool), payout);
-        pool.returnCapital(payout);
+        uint256 toReturn = payout - pool.balance();
+        asset.approve(address(pool), toReturn);
+        pool.returnCapital(toReturn);
         vault.settleRedeemBatch(cycleId, payout);
         vault.setAllocatorActive(false);
         vm.stopPrank();
         vm.prank(depositor);
         assertEq(hub.redeem(vaultId, shares, depositor, depositor), payout);
         assertEq(asset.balanceOf(depositor), payout);
+    }
+
+    function testReserveBackedFastClaimsAndRefill() external {
+        _startAndDeposit();
+        uint256 available = pool.allocatorAllowance();
+        vm.prank(executor);
+        pool.deployCapital(available);
+        assertEq(pool.balance(), 1_000e6);
+        assertEq(pool.allocatorAllowance(), 0);
+        address second = makeAddr("second");
+        vm.startPrank(depositor);
+        share.transfer(second, 1_001e18);
+        share.approve(address(vault), type(uint256).max);
+        uint256 fast = hub.requestFastRedeem(vaultId, 600e18, depositor, depositor);
+        vm.stopPrank();
+        vm.startPrank(second);
+        share.approve(address(vault), type(uint256).max);
+        vm.expectRevert(bytes4(keccak256("SyVault__FastRedeemCapExceeded()")));
+        hub.requestFastRedeem(vaultId, 401e18, second, second);
+        assertEq(hub.requestFastRedeem(vaultId, 400e18, second, second), fast);
+        vm.stopPrank();
+        assertEq(vault.fastRedeemCapacityShares(), 0);
+        vm.warp(block.timestamp + 20 hours);
+        vm.startPrank(executor);
+        vm.expectRevert(TxFlowVault.TxFlowVault__ReserveUnavailable.selector);
+        vault.settleRedeemBatch(fast, 999e6);
+        vault.settleRedeemBatch(fast, 1_000e6);
+        vm.stopPrank();
+        assertEq(vault.fastRedeemCapacityShares(), 0);
+        vm.prank(second);
+        assertEq(hub.redeem(vaultId, 400e18, second, second), 400e6);
+        vm.prank(depositor);
+        assertEq(hub.redeem(vaultId, 600e18, depositor, depositor), 600e6);
+        assertEq(vault.fastRedeemCapacityShares(), 0);
+        vm.startPrank(executor);
+        asset.approve(address(pool), 300e6);
+        pool.returnCapital(300e6);
+        vm.stopPrank();
+        assertEq(vault.fastRedeemCapacityShares(), 300e18);
+        assertEq(pool.allocatorAllowance(), 0);
+    }
+
+    function testFuzzFastCapacityAndClaimFee(uint96 requested) external {
+        _startAndDeposit();
+        uint256 available = pool.allocatorAllowance();
+        vm.prank(executor);
+        pool.deployCapital(available);
+        vault.setFastRedeemFeeBps(50);
+        uint256 shares = bound(uint256(requested), 1e18, 1_000e18);
+        vm.startPrank(depositor);
+        share.approve(address(vault), shares);
+        uint256 fast = hub.requestFastRedeem(vaultId, shares, depositor, depositor);
+        vm.stopPrank();
+        assertLe(vault.fastRedeemCapacityShares() + shares, 1_000e18);
+        vm.warp(block.timestamp + 20 hours);
+        uint256 gross = shares * INITIAL_PRICE / 1e18;
+        vm.prank(executor);
+        vault.settleRedeemBatch(fast, gross);
+        uint256 claimGross = shares * (gross * 1e18 / shares) / 1e18;
+        vm.prank(depositor);
+        uint256 paid = hub.redeem(vaultId, shares, depositor, depositor);
+        assertEq(paid + asset.balanceOf(feeRecipient), claimGross);
+        assertEq(asset.balanceOf(feeRecipient), claimGross * 50 / 10_000);
+    }
+
+    function testPendingDepositsAndNormalRequestsReduceFastCapacity() external {
+        _startAndDeposit();
+        uint256 available = pool.allocatorAllowance();
+        vm.prank(executor);
+        pool.deployCapital(available);
+        asset.mint(depositor, 7_000e6);
+        vm.startPrank(depositor);
+        asset.approve(address(vault), 7_000e6);
+        hub.requestDeposit(vaultId, 7_000e6, depositor, depositor);
+        assertEq(vault.fastRedeemCapacityShares(), 1_000e18);
+        share.approve(address(vault), 750e18);
+        hub.requestRedeem(vaultId, 750e18, depositor, depositor);
+        vm.stopPrank();
+        assertEq(vault.fastRedeemCapacityShares(), 250e18);
+        vault.setFastRedeemEnabled(false);
+        assertEq(vault.fastRedeemCapacityShares(), 0);
+        vm.warp(block.timestamp + EPOCH_DURATION);
+        _settle(_approval(INITIAL_PRICE));
     }
 
     function testShortNormalRedemptionPaysTheConfirmedCycleRateWithoutASecondFee() external {

@@ -130,9 +130,9 @@ contract PreviewTxFlowDeployment is Script {
             vm.getCode("src/syShare.sol:SyShare"), abi.encode(config.shareName, config.shareSymbol, packet.vault)
         );
         packet.poolInitCode =
-            abi.encodePacked(vm.getCode("src/LiquidityPool.sol:LiquidityPool"), abi.encode(NATIVE_USDC, packet.vault));
+            abi.encodePacked(vm.getCode("src/integrations/txflow/TxFlowLiquidityPool.sol:TxFlowLiquidityPool"), abi.encode(NATIVE_USDC, packet.vault));
         packet.vaultInitCode = abi.encodePacked(
-            vm.getCode("src/syVault.sol:SyVault"),
+            vm.getCode("src/integrations/txflow/TxFlowVault.sol:TxFlowVault"),
             abi.encode(
                 NATIVE_USDC,
                 packet.share,
@@ -142,8 +142,7 @@ contract PreviewTxFlowDeployment is Script {
                 packet.guard,
                 config.executor,
                 config.feeRecipient,
-                INITIAL_PRICE,
-                false
+                INITIAL_PRICE
             )
         );
         packet.guardInitCode = abi.encodePacked(

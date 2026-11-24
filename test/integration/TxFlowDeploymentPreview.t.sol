@@ -72,7 +72,8 @@ contract TxFlowDeploymentPreviewTest is Test {
         assertEq(vault.allocator(), executor);
         assertEq(vault.feeRecipient(), feeRecipient);
         assertEq(vault.latestSharePrice(), 1e6);
-        assertFalse(vault.fastRedeemEnabled());
+        assertTrue(vault.fastRedeemEnabled());
+        assertEq(vault.fastRedeemCapBps(), 1_000);
         assertEq(guard.navSigner(), navSigner);
         assertEq(guard.operator(), operator);
 

@@ -106,7 +106,7 @@ contract LiquidityPool is ReentrancyGuard, ILiquidityPool {
     ///      deploying them would leave the pool unable to honour cancellations.
     ///      Once epochSettle() processes a batch, pendingDepositAssets drops to zero for
     ///      those deposits and they become deployable TVL.
-    function allocatorAllowance() public view returns (uint256) {
+    function allocatorAllowance() public view virtual returns (uint256) {
         uint256 poolBalance   = i_asset.balanceOf(address(this));
         uint256 redeemDueAmt  = ISyVault(i_vault).redeemDue();
         uint256 claimableAmt  = ISyVault(i_vault).claimableRedeemAssets();
