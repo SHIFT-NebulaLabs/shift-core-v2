@@ -37,6 +37,10 @@ contract TxFlowNavKeeper is ITxFlowNavKeeper, EIP712, ReentrancyGuard {
         "EpochApproval(uint256 epochEnd,uint256 price,uint256 nonce,uint64 observedAt,uint64 validUntil,bytes32 stateHash,bytes32 evidenceHash)"
     );
 
+    bytes32 private constant CARRY_FORWARD_TYPEHASH = keccak256(
+        "CarryForwardApproval(uint256 epochEnd,uint256 price,uint256 nonce,uint64 observedAt,uint64 validUntil,bytes32 stateHash,bytes32 evidenceHash)"
+    );
+
     /// @notice Bound Shift V2 vault.
     ISyVault public immutable vault;
     /// @notice Bound native-USDC liquidity pool.
@@ -91,6 +95,27 @@ contract TxFlowNavKeeper is ITxFlowNavKeeper, EIP712, ReentrancyGuard {
 
     /// @inheritdoc ITxFlowNavKeeper
     function settleEpoch(EpochApproval calldata approval, bytes calldata signature) external nonReentrant {
+        _checkApproval(approval);
+        uint256 supply = vault.effectiveSupply();
+        if (
+            (approval.epochEnd == type(uint256).max && (approval.price != 0 || supply != 0))
+                || (approval.price == 0 && supply != 0)
+        ) revert TxFlowNavKeeper__InvalidVaultState();
+        _consume(approval, signature, approvalDigest(approval));
+    }
+
+    /// @inheritdoc ITxFlowNavKeeper
+    function carryForwardEpoch(EpochApproval calldata approval, bytes calldata signature) external nonReentrant {
+        _checkApproval(approval);
+        if (
+            approval.price != 0 || vault.stalePriceEpochs() == 0 || vault.effectiveSupply() == 0
+                || vault.latestSharePrice() == 0
+        ) revert TxFlowNavKeeper__InvalidVaultState();
+        _consume(approval, signature, carryForwardDigest(approval));
+        emit EpochPriceCarriedForward(approval.nonce, approval.epochEnd, vault.latestSharePrice());
+    }
+
+    function _checkApproval(EpochApproval calldata approval) private view {
         if (msg.sender != operator) revert TxFlowNavKeeper__Unauthorized();
         _checkBinding();
         if (
@@ -106,13 +131,10 @@ contract TxFlowNavKeeper is ITxFlowNavKeeper, EIP712, ReentrancyGuard {
                 || approval.validUntil - approval.observedAt > maximumApprovalLifetime || approval.evidenceHash == 0
                 || approval.stateHash != stateHash()
         ) revert TxFlowNavKeeper__InvalidApproval();
+    }
 
-        uint256 supply = vault.effectiveSupply();
-        if (
-            (approval.epochEnd == type(uint256).max && (approval.price != 0 || supply != 0))
-                || (approval.price == 0 && supply != 0)
-        ) revert TxFlowNavKeeper__InvalidVaultState();
-        if (ECDSA.recover(approvalDigest(approval), signature) != navSigner) revert TxFlowNavKeeper__InvalidApproval();
+    function _consume(EpochApproval calldata approval, bytes calldata signature, bytes32 digest) private {
+        if (ECDSA.recover(digest, signature) != navSigner) revert TxFlowNavKeeper__InvalidApproval();
 
         ++nonce;
         vault.epochSettle(approval.price);
@@ -166,6 +188,11 @@ contract TxFlowNavKeeper is ITxFlowNavKeeper, EIP712, ReentrancyGuard {
     /// @inheritdoc ITxFlowNavKeeper
     function approvalDigest(EpochApproval calldata approval) public view returns (bytes32 digest) {
         return _hashTypedDataV4(keccak256(abi.encode(EPOCH_APPROVAL_TYPEHASH, approval)));
+    }
+
+    /// @inheritdoc ITxFlowNavKeeper
+    function carryForwardDigest(EpochApproval calldata approval) public view returns (bytes32 digest) {
+        return _hashTypedDataV4(keccak256(abi.encode(CARRY_FORWARD_TYPEHASH, approval)));
     }
 
     function _checkBinding() private view {

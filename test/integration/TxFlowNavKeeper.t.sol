@@ -337,6 +337,67 @@ contract TxFlowNavKeeperTest is Test {
         assertEq(guard.nonce(), 2);
     }
 
+    function testCarryForwardRetainsPriceAndConsumesOnlyItsOwnApproval() external {
+        _startAndDeposit();
+        uint256 retained = vault.latestSharePrice();
+        vm.warp(vault.epochEnd());
+        ITxFlowNavKeeper.EpochApproval memory approval = _approval(0);
+        bytes memory freshSignature = _sign(approval, navSignerKey);
+        bytes memory carrySignature = _signCarry(approval, navSignerKey);
+        assertNotEq(guard.approvalDigest(approval), guard.carryForwardDigest(approval));
+        vm.expectRevert(TxFlowNavKeeper.TxFlowNavKeeper__InvalidApproval.selector);
+        vm.prank(operator);
+        guard.carryForwardEpoch(approval, freshSignature);
+        vm.expectRevert(TxFlowNavKeeper.TxFlowNavKeeper__InvalidVaultState.selector);
+        vm.prank(operator);
+        guard.settleEpoch(approval, carrySignature);
+        vm.prank(operator);
+        guard.carryForwardEpoch(approval, carrySignature);
+        assertEq(vault.latestSharePrice(), retained);
+        assertEq(guard.nonce(), approval.nonce + 1);
+        vm.expectRevert(TxFlowNavKeeper.TxFlowNavKeeper__InvalidApproval.selector);
+        vm.prank(operator);
+        guard.carryForwardEpoch(approval, carrySignature);
+    }
+
+    function testCarryRequiresElapsedPositiveSupplyAndSeparateSignerAndOperator() external {
+        ITxFlowNavKeeper.EpochApproval memory approval = _approval(0);
+        bytes memory signature = _signCarry(approval, navSignerKey);
+        vm.expectRevert(TxFlowNavKeeper.TxFlowNavKeeper__InvalidVaultState.selector);
+        vm.prank(operator);
+        guard.carryForwardEpoch(approval, signature);
+
+        _startAndDeposit();
+        approval = _approval(0);
+        signature = _signCarry(approval, navSignerKey);
+        vm.expectRevert(TxFlowNavKeeper.TxFlowNavKeeper__InvalidVaultState.selector);
+        vm.prank(operator);
+        guard.carryForwardEpoch(approval, signature);
+        vm.warp(vault.epochEnd());
+        approval = _approval(0);
+        signature = _signCarry(approval, navSignerKey);
+        vm.expectRevert(TxFlowNavKeeper.TxFlowNavKeeper__Unauthorized.selector);
+        vm.prank(navSigner);
+        guard.carryForwardEpoch(approval, signature);
+        bytes memory wrongSigner = _signCarry(approval, 99);
+        vm.expectRevert(TxFlowNavKeeper.TxFlowNavKeeper__InvalidApproval.selector);
+        vm.prank(operator);
+        guard.carryForwardEpoch(approval, wrongSigner);
+        vm.prank(executor);
+        vault.setAllocatorActive(true);
+        vm.expectRevert(TxFlowNavKeeper.TxFlowNavKeeper__InvalidVaultState.selector);
+        vm.prank(operator);
+        guard.carryForwardEpoch(approval, signature);
+        assertEq(guard.nonce(), approval.nonce);
+    }
+
+    function _signCarry(ITxFlowNavKeeper.EpochApproval memory approval, uint256 key)
+        private view returns (bytes memory)
+    {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, guard.carryForwardDigest(approval));
+        return abi.encodePacked(r, s, v);
+    }
+
     function testDigestMatchesTypedDataEncoding() external view {
         ITxFlowNavKeeper.EpochApproval memory approval = _approval(0);
         bytes32 domain = keccak256(
